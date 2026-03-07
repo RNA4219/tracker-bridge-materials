@@ -2,22 +2,14 @@
 
 ## Priority Reference
 
-**`docs/kv-priority-roadmap/` is the highest priority reference for this project.**
+**`BLUEPRINT.md` が最上位方針です。必ず最初に参照してください。**
 
-Always consult this directory first when making decisions about implementation order or priorities.
-
-### Priority Order
-
-1. `kv-cache-independence-amendments.md`
-2. `01-typed-ref-unification.md`
-3. `02-workx-state-history-and-bundle-audit.md`
-4. `03-workx-memx-context-rebuild-resolver.md`
-5. `04-tracker-bridge-minimum-integration.md`
+Blueprint内の「優先実施順序」セクションに記載された `docs/kv-priority-roadmap/` のプライオリティに従ってください。
 
 ### Critical Rules
 
-- **Do not deviate from the implementation order.**
-- **Do not proceed with projects in parallel before typed_ref unification is complete.** Doing so is dangerous and may cause inconsistencies across projects.
+- **実施順を崩さないこと**: P1 → P2 → P3 → P4 → P5
+- **typed_ref統一前に並行作業を進めるのは危険**
 
 ## Project Overview
 
@@ -25,8 +17,8 @@ tracker-bridge is a synchronization layer between external trackers (Jira, GitHu
 
 ### Key Concepts
 
-- **typed_ref format**: `<domain>:<type>:<id_or_key>`
-  - Examples: `workx:task:01JABCDEF...`, `tracker:jira:PROJ-123`
+- **typed_ref format**: `<domain>:<entity_type>:<provider>:<entity_id>`
+  - Examples: `workx:task:local:01JABCDEF...`, `tracker:issue:jira:PROJ-123`
 
 ### Development Commands
 
