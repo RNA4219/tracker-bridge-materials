@@ -2,22 +2,20 @@
 from __future__ import annotations
 
 import sqlite3
-import json
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 
 import pytest
 
-from tracker_bridge.db import connect
-from tracker_bridge.models import TrackerConnection, IssueCache, EntityLink, SyncEvent
+from tracker_bridge.errors import DuplicateError, NotFoundError
+from tracker_bridge.models import EntityLink, IssueCache, SyncEvent, TrackerConnection
 from tracker_bridge.repositories.connection import TrackerConnectionRepository
-from tracker_bridge.repositories.issue_cache import IssueCacheRepository
 from tracker_bridge.repositories.entity_link import EntityLinkRepository
+from tracker_bridge.repositories.issue_cache import IssueCacheRepository
 from tracker_bridge.repositories.sync_event import SyncEventRepository
-from tracker_bridge.errors import NotFoundError, DuplicateError
 
 
 def now_iso() -> str:
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 @pytest.fixture
@@ -63,6 +61,7 @@ def conn() -> sqlite3.Connection:
             last_seen_at TEXT NOT NULL,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
+            UNIQUE(tracker_connection_id, remote_issue_key),
             FOREIGN KEY (tracker_connection_id) REFERENCES tracker_connection(id) ON DELETE CASCADE
         )
     """)

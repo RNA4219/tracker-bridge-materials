@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from tracker_bridge.errors import ValidationError
@@ -10,7 +10,7 @@ from tracker_bridge.repositories.entity_link import EntityLinkRepository
 
 
 def now_iso() -> str:
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 class LinkService:

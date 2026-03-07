@@ -1,14 +1,12 @@
 """Tests for models module."""
 from __future__ import annotations
 
-import pytest
-
 from tracker_bridge.models import (
-    TrackerConnection,
-    IssueCache,
     EntityLink,
-    SyncEvent,
+    IssueCache,
     NormalizedIssue,
+    SyncEvent,
+    TrackerConnection,
 )
 
 

@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-import json
 import hashlib
-from datetime import datetime, UTC
+import json
+from datetime import datetime, timezone
 from uuid import uuid4
 
-from tracker_bridge.models import IssueCache, SyncEvent
-from tracker_bridge.refs import make_remote_ref
+from tracker_bridge.models import IssueCache, NormalizedIssue, SyncEvent
+from tracker_bridge.refs import make_tracker_issue_ref
 from tracker_bridge.repositories.connection import TrackerConnectionRepository
 from tracker_bridge.repositories.issue_cache import IssueCacheRepository
 from tracker_bridge.repositories.sync_event import SyncEventRepository
 
 
 def now_iso() -> str:
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def make_fingerprint(
@@ -52,7 +52,7 @@ class IssueService:
         self,
         *,
         tracker_connection_id: str,
-        normalized_issue,
+        normalized_issue: NormalizedIssue,
     ) -> IssueCache:
         connection = self.connection_repo.get(tracker_connection_id)
         ts = now_iso()
@@ -76,7 +76,7 @@ class IssueService:
         )
         self.issue_repo.upsert(issue)
 
-        remote_ref = make_remote_ref(connection.tracker_type, normalized_issue.remote_issue_key)
+        remote_ref = make_tracker_issue_ref(connection.tracker_type, normalized_issue.remote_issue_key)
         fingerprint = make_fingerprint(
             tracker_connection_id=tracker_connection_id,
             direction="inbound",

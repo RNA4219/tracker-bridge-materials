@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "External tracker sync bridge for workx/memx-core integration"
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 authors = [
     { name = "tracker-bridge team" }
 ]
@@ -17,6 +17,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Typing :: Typed",
@@ -44,8 +45,10 @@ tracker-bridge = "tracker_bridge.cli.main:app"
 packages = ["tracker_bridge"]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py310"
 line-length = 100
+
+[tool.ruff.lint]
 select = [
     "E",      # pycodestyle errors
     "W",      # pycodestyle warnings
@@ -61,11 +64,14 @@ ignore = [
     "E501",   # line too long (handled by formatter)
 ]
 
-[tool.ruff.isort]
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ARG002"]  # unused fixture arguments
+
+[tool.ruff.lint.isort]
 known-first-party = ["tracker_bridge"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.10"
 strict = true
 warn_return_any = true
 warn_unused_configs = true

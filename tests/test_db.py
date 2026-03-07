@@ -72,10 +72,9 @@ class TestTransaction:
             conn = connect(db_path)
             conn.execute("CREATE TABLE test (id TEXT PRIMARY KEY)")
 
-            with pytest.raises(ValueError):
-                with transaction(conn):
-                    conn.execute("INSERT INTO test (id) VALUES (?)", ("test-1",))
-                    raise ValueError("test error")
+            with pytest.raises(ValueError), transaction(conn):
+                conn.execute("INSERT INTO test (id) VALUES (?)", ("test-1",))
+                raise ValueError("test error")
 
             result = conn.execute("SELECT COUNT(*) FROM test").fetchone()
             assert result[0] == 0

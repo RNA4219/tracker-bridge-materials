@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import json
 import hashlib
-from datetime import datetime, UTC
+import json
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from tracker_bridge.models import SyncEvent
@@ -10,7 +10,7 @@ from tracker_bridge.repositories.sync_event import SyncEventRepository
 
 
 def now_iso() -> str:
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def make_fingerprint(
@@ -44,7 +44,7 @@ class SyncService:
         remote_ref: str,
         local_ref: str | None,
         event_type: str,
-        payload: dict,
+        payload: dict[str, object],
         uniqueness_source: str,
     ) -> SyncEvent:
         ts = now_iso()
