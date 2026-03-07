@@ -105,3 +105,16 @@ class SyncEventRepository:
         )
         if cur.rowcount == 0:
             raise NotFoundError(f"sync_event not found: {event_id}")
+
+    def mark_skipped(self, event_id: str, processed_at: str) -> None:
+        cur = self.conn.execute(
+            """
+            UPDATE sync_event
+               SET status = 'skipped',
+                   processed_at = ?
+             WHERE id = ?
+            """,
+            (processed_at, event_id),
+        )
+        if cur.rowcount == 0:
+            raise NotFoundError(f"sync_event not found: {event_id}")
