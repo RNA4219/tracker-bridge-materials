@@ -1,0 +1,75 @@
+{
+  "generated_at": "2025-03-08T00:00:00Z",
+  "nodes": [
+    {
+      "node_id": "tracker-bridge",
+      "role": "sync-layer",
+      "type": "service",
+      "description": "External tracker sync bridge for workx/memx-core integration",
+      "dependencies": ["workx", "memx-core"],
+      "dependents": []
+    },
+    {
+      "node_id": "workx",
+      "role": "task-state",
+      "type": "service",
+      "description": "Task state management",
+      "dependencies": [],
+      "dependents": ["tracker-bridge", "memx-core"]
+    },
+    {
+      "node_id": "memx-core",
+      "role": "memory",
+      "type": "service",
+      "description": "Memory and evidence management",
+      "dependencies": ["workx"],
+      "dependents": ["tracker-bridge"]
+    },
+    {
+      "node_id": "typed-ref",
+      "role": "contract",
+      "type": "shared",
+      "description": "Canonical reference format for cross-system references",
+      "format": "<domain>:<entity_type>:<provider>:<entity_id>",
+      "consumers": ["tracker-bridge", "workx", "memx-core"]
+    }
+  ],
+  "edges": [
+    {
+      "from": "tracker-bridge",
+      "to": "workx",
+      "type": "typed_ref",
+      "description": "Entity link references"
+    },
+    {
+      "from": "tracker-bridge",
+      "to": "memx-core",
+      "type": "typed_ref",
+      "description": "Evidence and artifact references"
+    },
+    {
+      "from": "workx",
+      "to": "typed-ref",
+      "type": "uses",
+      "description": "Task and decision references"
+    },
+    {
+      "from": "memx-core",
+      "to": "typed-ref",
+      "type": "uses",
+      "description": "Evidence and artifact references"
+    },
+    {
+      "from": "tracker-bridge",
+      "to": "typed-ref",
+      "type": "uses",
+      "description": "Issue and connection references"
+    }
+  ],
+  "caps": {
+    "tracker-bridge": {
+      "provides": ["issue_cache", "entity_link", "sync_event"],
+      "requires": ["workx:task", "memx:evidence"]
+    }
+  }
+}
