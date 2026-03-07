@@ -5,6 +5,7 @@ from tracker_bridge.services.issue_service import IssueService
 from tracker_bridge.services.link_service import LinkService
 from tracker_bridge.services.state_transition_service import StateTransitionService
 from tracker_bridge.services.sync_service import SyncService
+from tracker_bridge.services.tracker_integration_service import TrackerIntegrationService
 
 __all__ = [
     "ConnectionService",
@@ -14,4 +15,5 @@ __all__ = [
     "LinkService",
     "StateTransitionService",
     "SyncService",
+    "TrackerIntegrationService",
 ]

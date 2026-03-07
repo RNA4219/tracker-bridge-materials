@@ -66,6 +66,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ARG002"]  # unused fixture arguments
+"tracker_bridge/adapters/*.py" = ["ARG002"]  # mock adapters implement Protocol
+"tracker_bridge/services/tracker_integration_service.py" = ["ARG002"]  # Protocol implementation
 
 [tool.ruff.lint.isort]
 known-first-party = ["tracker_bridge"]
