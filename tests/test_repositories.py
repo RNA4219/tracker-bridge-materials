@@ -319,7 +319,7 @@ class TestEntityLinkRepository:
         ts = now_iso()
         model = EntityLink(
             id="link-1",
-            local_ref="workx:task:abc123",
+            local_ref="agent-taskstate:task:abc123",
             remote_ref="tracker:jira:PROJ-123",
             link_role="primary",
             created_at=ts,
@@ -327,13 +327,13 @@ class TestEntityLinkRepository:
         )
         repo.create(model)
 
-        by_local = repo.list_by_local_ref("workx:task:abc123")
+        by_local = repo.list_by_local_ref("agent-taskstate:task:abc123")
         assert len(by_local) == 1
         assert by_local[0].remote_ref == "tracker:jira:PROJ-123"
 
         by_remote = repo.list_by_remote_ref("tracker:jira:PROJ-123")
         assert len(by_remote) == 1
-        assert by_remote[0].local_ref == "workx:task:abc123"
+        assert by_remote[0].local_ref == "agent-taskstate:task:abc123"
 
 
 class TestSyncEventRepository:
@@ -380,7 +380,7 @@ class TestSyncEventRepository:
             tracker_connection_id="conn-1",
             direction="outbound",
             remote_ref="tracker:jira:PROJ-123",
-            local_ref="workx:task:abc",
+            local_ref="agent-taskstate:task:abc",
             event_type="status_changed",
             fingerprint=None,
             payload_json='{}',
@@ -405,7 +405,7 @@ class TestSyncEventRepository:
             tracker_connection_id="conn-1",
             direction="outbound",
             remote_ref="tracker:jira:PROJ-123",
-            local_ref="workx:task:abc",
+            local_ref="agent-taskstate:task:abc",
             event_type="status_changed",
             fingerprint=None,
             payload_json='{}',

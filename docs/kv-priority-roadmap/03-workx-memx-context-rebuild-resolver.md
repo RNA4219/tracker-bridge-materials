@@ -1,5 +1,9 @@
 # Priority 3: workx x memx-core の context rebuild resolver
 
+**ステータス: ✅ 完了**
+**完了日: 2026-03-09**
+**リリース: v0.1.0**
+
 ## 目的
 
 `workx` の bundle build を「単なる ref の寄せ集め」から、「再開に必要な文脈を再構成する処理」へ進化させる。

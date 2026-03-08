@@ -85,7 +85,7 @@ class TestMockTrackerIssueResolver:
     def test_can_resolve_tracker_issue(self) -> None:
         resolver = MockTrackerIssueResolver()
         assert resolver.can_resolve("tracker:issue:jira:PROJ-123") is True
-        assert resolver.can_resolve("workx:task:local:123") is False
+        assert resolver.can_resolve("agent-taskstate:task:local:123") is False
         assert resolver.can_resolve("invalid") is False
 
     def test_resolve_existing_issue(self) -> None:
@@ -109,7 +109,7 @@ class TestMockTrackerIssueResolver:
     def test_resolve_unsupported_ref(self) -> None:
         resolver = MockTrackerIssueResolver()
 
-        result = resolver.resolve("workx:task:local:123")
+        result = resolver.resolve("agent-taskstate:task:local:123")
         assert result.status == ResolveStatus.UNSUPPORTED
 
     def test_resolve_many(self) -> None:

@@ -1,5 +1,9 @@
 # Priority 1: typed_ref 統一
 
+**ステータス: ✅ 完了**
+**完了日: 2026-03-09**
+**リリース: v0.1.0**
+
 ## 目的
 
 `workx` / `memx-core` / `tracker-bridge` の参照表現を 1 つに固定する。

@@ -10,7 +10,7 @@ from tracker_bridge.adapters.base import TrackerAdapter
 from tracker_bridge.adapters.github import MockGitHubAdapter
 from tracker_bridge.adapters.jira import MockJiraAdapter
 from tracker_bridge.models import EntityLink, IssueCache, SyncEvent
-from tracker_bridge.refs import TypedRef, make_tracker_issue_ref, make_workx_task_ref
+from tracker_bridge.refs import TypedRef, make_tracker_issue_ref, make_agent_taskstate_task_ref
 from tracker_bridge.repositories.entity_link import EntityLinkRepository
 from tracker_bridge.repositories.issue_cache import IssueCacheRepository
 from tracker_bridge.repositories.sync_event import SyncEventRepository
@@ -26,7 +26,7 @@ class TrackerIntegrationService:
 
     This service handles:
     - Issue import and caching
-    - Entity linking between tracker issues and workx tasks
+    - Entity linking between tracker issues and agent-taskstate tasks
     - Sync event tracking
     - Status suggestion (not automatic updates)
     """
@@ -159,19 +159,19 @@ class TrackerIntegrationService:
         task_id: str,
         link_role: str = "primary",
     ) -> EntityLink:
-        """Create a link between a tracker issue and a workx task.
+        """Create a link between a tracker issue and an agent-taskstate task.
 
         Args:
             tracker_type: Type of tracker
             remote_issue_key: Issue key
-            task_id: workx task ID
+            task_id: agent-taskstate task ID
             link_role: Link role (primary, related, duplicate, blocks)
 
         Returns:
             Created entity link
         """
         remote_ref = make_tracker_issue_ref(tracker_type, remote_issue_key)
-        local_ref = make_workx_task_ref(task_id)
+        local_ref = make_agent_taskstate_task_ref(task_id)
 
         ts = now_iso()
         link = EntityLink(
@@ -190,12 +190,12 @@ class TrackerIntegrationService:
         """Get all issues linked to a task.
 
         Args:
-            task_id: workx task ID
+            task_id: agent-taskstate task ID
 
         Returns:
             List of (link, issue) tuples
         """
-        local_ref = make_workx_task_ref(task_id)
+        local_ref = make_agent_taskstate_task_ref(task_id)
         links = self.link_repo.list_by_local_ref(local_ref)
 
         results = []
@@ -303,7 +303,7 @@ class TrackerIntegrationService:
 
         # Record sync event
         remote_ref = make_tracker_issue_ref(tracker_type, remote_issue_key)
-        local_ref = make_workx_task_ref(task_id) if task_id else None
+        local_ref = make_agent_taskstate_task_ref(task_id) if task_id else None
 
         return self._record_sync_event(
             connection_id=connection_id,

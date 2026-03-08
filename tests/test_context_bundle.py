@@ -117,7 +117,7 @@ class TestContextBundleSourceRepository:
         source = ContextBundleSource(
             id="source-1",
             context_bundle_id="bundle-1",
-            typed_ref="workx:task:local:task-123",
+            typed_ref="agent-taskstate:task:local:task-123",
             source_kind="task",
             selected_raw=False,
             metadata_json=None,
@@ -127,7 +127,7 @@ class TestContextBundleSourceRepository:
 
         sources = source_repo.list_by_bundle("bundle-1")
         assert len(sources) == 1
-        assert sources[0].typed_ref == "workx:task:local:task-123"
+        assert sources[0].typed_ref == "agent-taskstate:task:local:task-123"
 
     def test_count_by_bundle(self, conn: sqlite3.Connection) -> None:
         bundle_repo = ContextBundleRepository(conn)
@@ -152,7 +152,7 @@ class TestContextBundleSourceRepository:
             source = ContextBundleSource(
                 id=f"source-{i}",
                 context_bundle_id="bundle-1",
-                typed_ref=f"workx:task:local:task-{i}",
+                typed_ref=f"agent-taskstate:task:local:task-{i}",
                 source_kind="task",
                 selected_raw=False,
                 metadata_json=None,
@@ -175,7 +175,7 @@ class TestContextBundleService:
             rebuild_level="summary",
             raw_included=False,
             source_refs=[
-                "workx:task:local:task-123",
+                "agent-taskstate:task:local:task-123",
                 "tracker:issue:jira:PROJ-456",
             ],
         )
@@ -196,7 +196,7 @@ class TestContextBundleService:
         bundle = service.create_bundle(
             purpose="checkpoint",
             summary="Checkpoint bundle",
-            source_refs=["workx:task:local:task-123"],
+            source_refs=["agent-taskstate:task:local:task-123"],
         )
 
         retrieved, sources = service.get_bundle_with_sources(bundle.id)

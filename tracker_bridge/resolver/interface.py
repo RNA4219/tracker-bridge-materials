@@ -82,7 +82,7 @@ class ResolverDiagnostics:
 class RefResolver(Protocol):
     """Protocol for resolving typed_refs.
 
-    Implementations should handle specific domains (memx, tracker, workx).
+    Implementations should handle specific domains (memx, tracker, agent-taskstate).
     """
 
     def can_resolve(self, typed_ref: str) -> bool:

@@ -112,12 +112,12 @@ class TestContextRebuildService:
 
         bundle_id, report, diagnostics = rebuild_service.rebuild_context(
             purpose="resume",
-            source_refs=["workx:task:123"],
+            source_refs=["agent-taskstate:task:123"],
         )
 
         assert bundle_id is not None
         assert len(report.unsupported) == 1
-        assert "workx:task:123" in diagnostics.unsupported_refs
+        assert "agent-taskstate:task:123" in diagnostics.unsupported_refs
 
     def test_should_include_raw(self, conn: sqlite3.Connection) -> None:
         bundle_repo = ContextBundleRepository(conn)

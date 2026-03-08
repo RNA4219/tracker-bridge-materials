@@ -75,13 +75,13 @@ class TestEntityLink:
     def test_create(self) -> None:
         model = EntityLink(
             id="link-1",
-            local_ref="workx:task:abc123",
+            local_ref="agent-taskstate:task:abc123",
             remote_ref="tracker:jira:PROJ-123",
             link_role="primary",
             created_at="2025-01-01T00:00:00Z",
             updated_at="2025-01-01T00:00:00Z",
         )
-        assert model.local_ref == "workx:task:abc123"
+        assert model.local_ref == "agent-taskstate:task:abc123"
         assert model.remote_ref == "tracker:jira:PROJ-123"
         assert model.link_role == "primary"
 
@@ -112,7 +112,7 @@ class TestSyncEvent:
             tracker_connection_id="conn-1",
             direction="outbound",
             remote_ref="tracker:jira:PROJ-456",
-            local_ref="workx:task:def456",
+            local_ref="agent-taskstate:task:def456",
             event_type="status_changed",
             fingerprint=None,
             payload_json='{"status": "Done"}',

@@ -8,13 +8,13 @@ from tracker_bridge.refs import (
     canonicalize,
     is_memx_ref,
     is_tracker_ref,
-    is_workx_ref,
+    is_agent_taskstate_ref,
     make_memx_artifact_ref,
     make_memx_evidence_ref,
     make_memx_knowledge_ref,
     make_ref,
     make_tracker_issue_ref,
-    make_workx_task_ref,
+    make_agent_taskstate_task_ref,
     validate_typed_ref,
 )
 
@@ -28,13 +28,13 @@ class TestTypedRef:
         assert ref.provider is None
         assert ref.is_memx is True
 
-    def test_parse_3_segment_workx(self) -> None:
-        ref = TypedRef.parse("workx:task:abc123")
-        assert ref.domain == "workx"
+    def test_parse_3_segment_agent_taskstate(self) -> None:
+        ref = TypedRef.parse("agent-taskstate:task:abc123")
+        assert ref.domain == "agent-taskstate"
         assert ref.entity_type == "task"
         assert ref.entity_id == "abc123"
         assert ref.provider is None
-        assert ref.is_workx is True
+        assert ref.is_agent_taskstate is True
 
     def test_parse_4_segment_tracker(self) -> None:
         ref = TypedRef.parse("tracker:issue:jira:PROJ-123")
@@ -72,9 +72,9 @@ class TestMakeRef:
         ref = make_ref("memx", "evidence", "01JABC")
         assert ref == "memx:evidence:01JABC"
 
-    def test_make_workx_ref(self) -> None:
-        ref = make_ref("workx", "task", "task_123")
-        assert ref == "workx:task:task_123"
+    def test_make_agent_taskstate_ref(self) -> None:
+        ref = make_ref("agent-taskstate", "task", "task_123")
+        assert ref == "agent-taskstate:task:task_123"
 
     def test_make_tracker_ref(self) -> None:
         ref = make_ref("tracker", "issue", "PROJ-123", provider="jira")
@@ -95,10 +95,10 @@ class TestMakeTrackerIssueRef:
         assert ref == "tracker:issue:linear:ENG-123"
 
 
-class TestMakeWorkxTaskRef:
+class TestMakeAgentTaskstateTaskRef:
     def test_task_ref(self) -> None:
-        ref = make_workx_task_ref("01JABCDEF")
-        assert ref == "workx:task:01JABCDEF"
+        ref = make_agent_taskstate_task_ref("01JABCDEF")
+        assert ref == "agent-taskstate:task:01JABCDEF"
 
 
 class TestMakeMemxRefs:
@@ -119,7 +119,7 @@ class TestValidateTypedRef:
     def test_valid_3_segment_refs(self) -> None:
         assert validate_typed_ref("memx:evidence:01JXYZ") is True
         assert validate_typed_ref("memx:knowledge:01HABC") is True
-        assert validate_typed_ref("workx:task:abc123") is True
+        assert validate_typed_ref("agent-taskstate:task:abc123") is True
 
     def test_valid_4_segment_refs(self) -> None:
         assert validate_typed_ref("tracker:issue:jira:PROJ-123") is True
@@ -149,15 +149,15 @@ class TestCanonicalize:
 class TestIsDomainRef:
     def test_is_memx_ref(self) -> None:
         assert is_memx_ref("memx:evidence:01H") is True
-        assert is_memx_ref("workx:task:01H") is False
+        assert is_memx_ref("agent-taskstate:task:01H") is False
         assert is_memx_ref("tracker:issue:jira:PROJ-123") is False
 
-    def test_is_workx_ref(self) -> None:
-        assert is_workx_ref("workx:task:01H") is True
-        assert is_workx_ref("memx:evidence:01H") is False
-        assert is_workx_ref("tracker:issue:jira:PROJ-123") is False
+    def test_is_agent_taskstate_ref(self) -> None:
+        assert is_agent_taskstate_ref("agent-taskstate:task:01H") is True
+        assert is_agent_taskstate_ref("memx:evidence:01H") is False
+        assert is_agent_taskstate_ref("tracker:issue:jira:PROJ-123") is False
 
     def test_is_tracker_ref(self) -> None:
         assert is_tracker_ref("tracker:issue:jira:PROJ-123") is True
         assert is_tracker_ref("memx:evidence:01H") is False
-        assert is_tracker_ref("workx:task:01H") is False
+        assert is_tracker_ref("agent-taskstate:task:01H") is False
