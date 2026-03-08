@@ -1,7 +1,7 @@
 # tracker-bridge SQLite 仕様書
 
 ## 1. 目的
-tracker-bridge は、外部トラッカー（Jira / GitHub Issues / Backlog / Linear など）と内部システム（`workx` / `memx-core`）の間に入る同期ブリッジである。
+tracker-bridge は、外部トラッカー（Jira / GitHub Issues / Backlog / Linear など）と内部システム（`agent-taskstate` / `memx-core`）の間に入る同期ブリッジである。
 
 SQLite では以下を保持する。
 
@@ -11,7 +11,7 @@ SQLite では以下を保持する。
 - 同期イベント履歴
 
 本DBは **外部トラッカーとの同期状態のローカル正本**であり、
-`workx.task` や `memx.evidence` の正本は持たない。
+`agent-taskstate.task` や `memx.evidence` の正本は持たない。
 
 ## 2. 前提
 ### 2.1 DBエンジン
@@ -25,7 +25,7 @@ SQLite では以下を保持する。
 - 外部参照は typed_ref 文字列で持つ
 
 例:
-- `workx:task:01HXXXX`
+- `agent-taskstate:task:01HXXXX`
 - `memx:evidence:01HYYYY`
 - `tracker:jira:PROJ-123`
 
@@ -111,7 +111,7 @@ CREATE INDEX idx_issue_cache_updated
 
 CREATE TABLE entity_link (
   id TEXT PRIMARY KEY,
-  local_ref TEXT NOT NULL,            -- workx:task:... / memx:artifact:...
+  local_ref TEXT NOT NULL,            -- agent-taskstate:task:... / memx:artifact:...
   remote_ref TEXT NOT NULL,           -- tracker:jira:PROJ-123
   link_role TEXT NOT NULL,            -- primary / related / duplicate / blocks / caused_by
   created_at TEXT NOT NULL,
@@ -135,7 +135,7 @@ CREATE TABLE sync_event (
   tracker_connection_id TEXT NOT NULL,
   direction TEXT NOT NULL,            -- inbound / outbound
   remote_ref TEXT NOT NULL,
-  local_ref TEXT,                     -- workx:task:* など
+  local_ref TEXT,                     -- agent-taskstate:task:* など
   event_type TEXT NOT NULL,           -- issue_created / issue_updated / comment_created / status_changed / link_created
   fingerprint TEXT,                   -- 冪等性制御用
   payload_json TEXT NOT NULL,
@@ -211,7 +211,7 @@ CREATE INDEX idx_sync_event_occurred
 外部 issue と内部 entity の対応関係を保持する。
 
 #### カラム
-- `local_ref`: `workx:task:*` を主用途とする
+- `local_ref`: `agent-taskstate:task:*` を主用途とする
 - `remote_ref`: `tracker:jira:PROJ-123` など
 - `link_role`: 関係種別
 
@@ -250,7 +250,7 @@ tracker-bridge では DB をまたぐ参照を typed_ref で統一する。
 
 ### 7.2 例
 ```text
-workx:task:01JABCDEF...
+agent-taskstate:task:01JABCDEF...
 memx:evidence:01JXYZ...
 tracker:jira:PROJ-123
 tracker:github:repo#45
@@ -390,7 +390,7 @@ MVP では以下を割り切る。
 
 そのため:
 
-- task の現在状態は `workx`
+- task の現在状態は `agent-taskstate`
 - 根拠や証拠は `memx-core`
 - 外部 tracker 状態は `tracker-bridge`
 

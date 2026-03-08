@@ -29,7 +29,7 @@ next_review_due: 2025-04-08
 
 ## 1. Problem Statement
 
-外部トラッカー（Jira / GitHub Issues / Backlog / Linear など）と内部システム（workx / memx-core）の間で、
+外部トラッカー（Jira / GitHub Issues / Backlog / Linear など）と内部システム（agent-taskstate / memx-core）の間で、
 チケット情報の同期・対応付けを行いたい。現在は外部トラッカーと内部作業状態の乖離が発生しており、
 手動での紐付けや進捗共有にコストがかかっている。
 
@@ -38,12 +38,12 @@ next_review_due: 2025-04-08
 ### In:
 - 外部トラッカーとの接続定義管理
 - 外部 issue / ticket の取得とローカルキャッシュ保存
-- 外部 issue と内部 task (workx.task) の対応付け
+- 外部 issue と内部 task (agent-taskstate.task) の対応付け
 - 同期イベントの記録と監査
 - 最小限の inbound / outbound 同期
 
 ### Out:
-- workx の task state 自体の管理
+- agent-taskstate の task state 自体の管理
 - memx-core の evidence / knowledge の保存
 - エージェント本体の推論やオーケストレーション
 - 外部トラッカーの完全ミラーリング
@@ -54,7 +54,7 @@ next_review_due: 2025-04-08
 - **言語**: Python 3.11以上
 - **DB**: SQLite 3.39以上（JSON1関数使用可能）
 - **認証情報**: DBに保存せず、環境変数またはsecret store参照
-- **疎結合**: workx / memx-core とは typed_ref による論理参照のみ
+- **疎結合**: agent-taskstate / memx-core とは typed_ref による論理参照のみ
 - **MVP優先**: 複雑な双方向同期よりも、責務分離と追跡可能性を優先
 
 ## 4. I/O Contract
@@ -88,7 +88,7 @@ flowchart LR
 ### CLI (予定):
 - `tracker-bridge connection create --type jira --name "My Jira" --base-url https://...`
 - `tracker-bridge issue import --connection <id> --key PROJ-123`
-- `tracker-bridge link create --local workx:task:abc --remote tracker:jira:PROJ-123`
+- `tracker-bridge link create --local agent-taskstate:task:abc --remote tracker:jira:PROJ-123`
 - `tracker-bridge sync status [--pending|--failed]`
 
 ### Python API:

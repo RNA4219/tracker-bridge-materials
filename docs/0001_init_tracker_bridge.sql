@@ -71,11 +71,11 @@ CREATE INDEX IF NOT EXISTS idx_issue_cache_last_seen_at
 
 -- ------------------------------------------------------------
 -- entity_link
--- 外部 issue と内部 entity(workx:task:*, memx:artifact:* など) の対応
+-- 外部 issue と内部 entity(agent-taskstate:task:*, memx:artifact:* など) の対応
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS entity_link (
   id TEXT PRIMARY KEY,
-  local_ref TEXT NOT NULL,            -- workx:task:... / memx:artifact:...
+  local_ref TEXT NOT NULL,            -- agent-taskstate:task:... / memx:artifact:...
   remote_ref TEXT NOT NULL,           -- tracker:jira:PROJ-123 / tracker:github:repo#45
   link_role TEXT NOT NULL,            -- primary / related / duplicate / blocks / caused_by
   created_at TEXT NOT NULL,           -- ISO 8601 UTC
@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS sync_event (
   tracker_connection_id TEXT NOT NULL,
   direction TEXT NOT NULL,            -- inbound / outbound
   remote_ref TEXT NOT NULL,
-  local_ref TEXT,                     -- workx:task:* など
+  local_ref TEXT,                     -- agent-taskstate:task:* など
   event_type TEXT NOT NULL,           -- issue_created / issue_updated / comment_created / status_changed / link_created
   fingerprint TEXT,                   -- 冪等制御用
   payload_json TEXT NOT NULL,

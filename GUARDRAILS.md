@@ -24,7 +24,7 @@ next_review_due: 2025-04-08
 
 ### 3. 疎結合の維持
 
-- workx / memx-core とは typed_ref による論理参照のみ
+- agent-taskstate / memx-core とは typed_ref による論理参照のみ
 - DBに認証情報を保存しない
 - 外部トラッカーの完全ミラーリングを行わない
 
@@ -38,7 +38,7 @@ next_review_due: 2025-04-08
 - [ ] typed_ref統一なしに複数PJを並行進行
 - [ ] 外部トラッカー情報を task 再開の必須条件にする
 - [ ] DBへの認証情報保存
-- [ ] workx/memx-core の内部実装への直接依存
+- [ ] agent-taskstate/memx-core の内部実装への直接依存
 
 ## エスカレーション
 

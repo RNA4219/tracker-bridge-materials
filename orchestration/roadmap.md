@@ -11,7 +11,7 @@
 ```mermaid
 flowchart LR
     P1[kv-cache-independence-amendments] --> P2[typed-ref-unification]
-    P2 --> P3[workx-state-history]
+    P2 --> P3[agent-taskstate-state-history]
     P3 --> P4[context-rebuild-resolver]
     P4 --> P5[tracker-bridge-integration]
 ```
@@ -30,7 +30,7 @@ flowchart LR
 
 ### Phase 2: 状態管理 (P3)
 
-- workx state history の実装
+- agent-taskstate state history の実装
 - bundle audit 機能の実装
 
 ### Phase 3: コンテキスト再構築 (P4)
@@ -49,6 +49,6 @@ flowchart LR
 |---------|--------|--------|-------|
 | P1-001 | kv-cache-independence-amendments | planned | - |
 | P2-001 | typed-ref-unification | planned | - |
-| P3-001 | workx-state-history | planned | - |
+| P3-001 | agent-taskstate-state-history | planned | - |
 | P4-001 | context-rebuild-resolver | planned | - |
 | P5-001 | tracker-bridge-integration | planned | - |

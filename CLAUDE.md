@@ -13,12 +13,12 @@ Blueprint内の「優先実施順序」セクションに記載された `docs/k
 
 ## Project Overview
 
-tracker-bridge is a synchronization layer between external trackers (Jira, GitHub Issues, Backlog, Linear, etc.) and internal systems (workx/memx-core).
+tracker-bridge is a synchronization layer between external trackers (Jira, GitHub Issues, Backlog, Linear, etc.) and internal systems (agent-taskstate/memx-core).
 
 ### Key Concepts
 
 - **typed_ref format**: `<domain>:<entity_type>:<provider>:<entity_id>`
-  - Examples: `workx:task:local:01JABCDEF...`, `tracker:issue:jira:PROJ-123`
+  - Examples: `agent-taskstate:task:local:01JABCDEF...`, `tracker:issue:jira:PROJ-123`
 
 ### Development Commands
 

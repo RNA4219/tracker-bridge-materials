@@ -1,10 +1,10 @@
 # tracker-bridge
 
-External tracker sync bridge for workx/memx-core integration.
+External tracker sync bridge for agent-taskstate/memx-core integration.
 
 ## Overview
 
-tracker-bridge is a synchronization layer between external trackers (Jira, GitHub Issues, Backlog, Linear, etc.) and internal systems (workx/memx-core).
+tracker-bridge is a synchronization layer between external trackers (Jira, GitHub Issues, Backlog, Linear, etc.) and internal systems (agent-taskstate/memx-core).
 
 It is responsible for:
 - Connection management to external trackers
@@ -61,7 +61,7 @@ External tracker connection definition.
 Local cache of external issue state.
 
 ### entity_link
-Mapping between external issues and internal entities (e.g., workx:task:*).
+Mapping between external issues and internal entities (e.g., agent-taskstate:task:*).
 
 ### sync_event
 Sync event history for auditing.
@@ -75,7 +75,7 @@ References across systems use typed_ref format:
 ```
 
 Examples:
-- `workx:task:01JABCDEF...`
+- `agent-taskstate:task:01JABCDEF...`
 - `memx:evidence:01JXYZ...`
 - `tracker:jira:PROJ-123`
 - `tracker:github:owner/repo#45`

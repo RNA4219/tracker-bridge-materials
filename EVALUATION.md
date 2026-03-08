@@ -14,7 +14,7 @@ next_review_due: 2025-04-08
 
 - [ ] 外部 issue 1件を取得できる
 - [ ] issue_cache に保存できる
-- [ ] workx.task 1件とリンクできる
+- [ ] agent-taskstate.task 1件とリンクできる
 - [ ] inbound sync_event を履歴として残せる
 - [ ] 内部完了イベントを外部へ 1 回反映できる
 - [ ] 失敗時に failed 履歴と原因を確認できる
@@ -53,7 +53,7 @@ next_review_due: 2025-04-08
 ### MVP検証シナリオ
 
 1. **Issue取り込み**: JiraAdapter.normalize_issue → IssueService.import_normalized_issue
-2. **リンク作成**: LinkService.create_link で workx:task:* と tracker:jira:* を紐付け
+2. **リンク作成**: LinkService.create_link で agent-taskstate:task:* と tracker:jira:* を紐付け
 3. **同期履歴**: sync_event テーブルに inbound/outbound イベントが記録される
 
 ## Verification Checklist

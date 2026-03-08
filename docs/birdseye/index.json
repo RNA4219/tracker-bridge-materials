@@ -5,12 +5,12 @@
       "node_id": "tracker-bridge",
       "role": "sync-layer",
       "type": "service",
-      "description": "External tracker sync bridge for workx/memx-core integration",
-      "dependencies": ["workx", "memx-core"],
+      "description": "External tracker sync bridge for agent-taskstate/memx-core integration",
+      "dependencies": ["agent-taskstate", "memx-core"],
       "dependents": []
     },
     {
-      "node_id": "workx",
+      "node_id": "agent-taskstate",
       "role": "task-state",
       "type": "service",
       "description": "Task state management",
@@ -22,7 +22,7 @@
       "role": "memory",
       "type": "service",
       "description": "Memory and evidence management",
-      "dependencies": ["workx"],
+      "dependencies": ["agent-taskstate"],
       "dependents": ["tracker-bridge"]
     },
     {
@@ -31,13 +31,13 @@
       "type": "shared",
       "description": "Canonical reference format for cross-system references",
       "format": "<domain>:<entity_type>:<provider>:<entity_id>",
-      "consumers": ["tracker-bridge", "workx", "memx-core"]
+      "consumers": ["tracker-bridge", "agent-taskstate", "memx-core"]
     }
   ],
   "edges": [
     {
       "from": "tracker-bridge",
-      "to": "workx",
+      "to": "agent-taskstate",
       "type": "typed_ref",
       "description": "Entity link references"
     },
@@ -48,7 +48,7 @@
       "description": "Evidence and artifact references"
     },
     {
-      "from": "workx",
+      "from": "agent-taskstate",
       "to": "typed-ref",
       "type": "uses",
       "description": "Task and decision references"
@@ -69,7 +69,7 @@
   "caps": {
     "tracker-bridge": {
       "provides": ["issue_cache", "entity_link", "sync_event"],
-      "requires": ["workx:task", "memx:evidence"]
+      "requires": ["agent-taskstate:task", "memx:evidence"]
     }
   }
 }

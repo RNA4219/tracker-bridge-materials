@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "tracker-bridge"
 version = "0.1.0"
-description = "External tracker sync bridge for workx/memx-core integration"
+description = "External tracker sync bridge for agent-taskstate/memx-core integration"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
