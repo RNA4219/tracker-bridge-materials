@@ -72,6 +72,13 @@ class TrackerIssueResolver(RefResolver):
             provider = ref.provider  # e.g., 'jira', 'github'
             issue_key = ref.entity_id  # e.g., 'PROJ-123'
 
+            if provider is None:
+                return ResolvedRef(
+                    typed_ref=typed_ref,
+                    status=ResolveStatus.UNSUPPORTED,
+                    error_message="Tracker ref must have provider",
+                )
+
             # Look up issue in cache by remote_issue_key
             # Note: This requires a connection_id mapping which we'll handle
             # For now, we search by remote_issue_key across connections

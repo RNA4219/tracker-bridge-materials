@@ -8,6 +8,10 @@ from tracker_bridge.resolver.interface import (
     SourceKind,
     SummaryFirstResolver,
 )
+from tracker_bridge.resolver.memx_resolver import (
+    MemxResolver,
+    MockMemxResolver,
+)
 from tracker_bridge.resolver.tracker_resolver import (
     MockTrackerIssueResolver,
     TrackerIssueResolver,
@@ -22,7 +26,10 @@ __all__ = [
     "ResolverDiagnostics",
     "SourceKind",
     "SummaryFirstResolver",
-    # Implementations
+    # Tracker
     "TrackerIssueResolver",
     "MockTrackerIssueResolver",
+    # Memx
+    "MemxResolver",
+    "MockMemxResolver",
 ]

@@ -1,13 +1,16 @@
 """typed_ref utilities for tracker-bridge.
 
-Canonical format (4-segment):
-    <domain>:<entity_type>:<provider>:<entity_id>
+Format (domain-dependent):
+    - memx:   3-segment: <domain>:<entity_type>:<entity_id>
+    - workx:  3-segment: <domain>:<entity_type>:<entity_id>
+    - tracker: 4-segment: <domain>:<entity_type>:<provider>:<entity_id>
 
 Examples:
+    - memx:evidence:01JXYZ...
+    - memx:knowledge:01HABC...
+    - workx:task:01JABCDEF...
     - tracker:issue:jira:PROJ-123
     - tracker:issue:github:owner/repo#45
-    - workx:task:local:01JABCDEF...
-    - memx:evidence:local:01JXYZ...
 """
 from __future__ import annotations
 
@@ -17,60 +20,101 @@ from typing import Final
 # Known domains (namespace)
 KNOWN_DOMAINS: Final[set[str]] = {"tracker", "workx", "memx"}
 
+# Domains that use 3-segment format (no provider)
+THREE_SEGMENT_DOMAINS: Final[set[str]] = {"memx", "workx"}
 
-@dataclass(frozen=True, slots=True)
+# Domains that use 4-segment format (with provider)
+FOUR_SEGMENT_DOMAINS: Final[set[str]] = {"tracker"}
+
+
+@dataclass(frozen=True)
 class TypedRef:
-    """Canonical typed reference with 4 segments."""
+    """Typed reference with domain-dependent format."""
 
     domain: str
     entity_type: str
-    provider: str
     entity_id: str
+    provider: str | None = None  # Only for tracker domain
 
     def __str__(self) -> str:
-        return f"{self.domain}:{self.entity_type}:{self.provider}:{self.entity_id}"
+        if self.domain in THREE_SEGMENT_DOMAINS:
+            return f"{self.domain}:{self.entity_type}:{self.entity_id}"
+        else:
+            return f"{self.domain}:{self.entity_type}:{self.provider}:{self.entity_id}"
 
     @classmethod
     def parse(cls, value: str) -> TypedRef:
         """Parse a typed_ref string into TypedRef object.
 
-        Accepts both canonical (4-segment) and legacy (3-segment) formats.
-        Legacy format is normalized with 'local' as default provider.
+        Accepts both 3-segment and 4-segment formats based on domain.
         """
         parts = value.split(":")
-        if len(parts) == 4:
-            # Canonical format
-            domain, entity_type, provider, entity_id = parts
-        elif len(parts) == 3:
-            # Legacy format: normalize with 'local' provider
+
+        if len(parts) == 3:
+            # 3-segment format (memx, workx)
             domain, entity_type, entity_id = parts
-            provider = "local"
+            if not all([domain, entity_type, entity_id]):
+                raise ValueError(f"Invalid typed_ref: empty segment in {value}")
+            return cls(
+                domain=domain,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                provider=None,
+            )
+
+        elif len(parts) == 4:
+            # 4-segment format (tracker)
+            domain, entity_type, provider, entity_id = parts
+            if not all([domain, entity_type, provider, entity_id]):
+                raise ValueError(f"Invalid typed_ref: empty segment in {value}")
+            return cls(
+                domain=domain,
+                entity_type=entity_type,
+                provider=provider,
+                entity_id=entity_id,
+            )
+
         else:
             raise ValueError(f"Invalid typed_ref format: {value}")
 
-        if not all([domain, entity_type, provider, entity_id]):
-            raise ValueError(f"Invalid typed_ref: empty segment in {value}")
+    @property
+    def is_memx(self) -> bool:
+        """Check if this is a memx reference."""
+        return self.domain == "memx"
 
-        return cls(
-            domain=domain,
-            entity_type=entity_type,
-            provider=provider,
-            entity_id=entity_id,
-        )
+    @property
+    def is_workx(self) -> bool:
+        """Check if this is a workx reference."""
+        return self.domain == "workx"
+
+    @property
+    def is_tracker(self) -> bool:
+        """Check if this is a tracker reference."""
+        return self.domain == "tracker"
 
 
 def make_ref(
     domain: str,
     entity_type: str,
-    provider: str,
     entity_id: str,
+    provider: str | None = None,
 ) -> str:
-    """Create a canonical typed_ref string (4-segment)."""
+    """Create a typed_ref string.
+
+    Args:
+        domain: Domain (memx, workx, tracker)
+        entity_type: Entity type (evidence, task, issue, etc.)
+        entity_id: Entity identifier
+        provider: Provider (only required for tracker domain)
+
+    Returns:
+        typed_ref string
+    """
     ref = TypedRef(
         domain=domain,
         entity_type=entity_type,
-        provider=provider,
         entity_id=entity_id,
+        provider=provider,
     )
     return str(ref)
 
@@ -83,41 +127,62 @@ def make_tracker_issue_ref(tracker_type: str, issue_key: str) -> str:
         issue_key: e.g., 'PROJ-123', 'owner/repo#45'
 
     Returns:
-        Canonical ref: 'tracker:issue:<tracker_type>:<issue_key>'
+        Ref: 'tracker:issue:<tracker_type>:<issue_key>'
     """
-    return make_ref("tracker", "issue", tracker_type, issue_key)
+    return make_ref("tracker", "issue", issue_key, provider=tracker_type)
 
 
-def make_workx_task_ref(task_id: str, provider: str = "local") -> str:
+def make_workx_task_ref(task_id: str) -> str:
     """Create a workx task reference.
 
     Args:
         task_id: Task identifier
-        provider: Provider name (default: 'local')
 
     Returns:
-        Canonical ref: 'workx:task:<provider>:<task_id>'
+        Ref: 'workx:task:<task_id>'
     """
-    return make_ref("workx", "task", provider, task_id)
+    return make_ref("workx", "task", task_id)
 
 
-def make_memx_evidence_ref(evidence_id: str, provider: str = "local") -> str:
+def make_memx_evidence_ref(evidence_id: str) -> str:
     """Create a memx evidence reference.
 
     Args:
         evidence_id: Evidence identifier
-        provider: Provider name (default: 'local')
 
     Returns:
-        Canonical ref: 'memx:evidence:<provider>:<evidence_id>'
+        Ref: 'memx:evidence:<evidence_id>'
     """
-    return make_ref("memx", "evidence", provider, evidence_id)
+    return make_ref("memx", "evidence", evidence_id)
+
+
+def make_memx_knowledge_ref(knowledge_id: str) -> str:
+    """Create a memx knowledge reference.
+
+    Args:
+        knowledge_id: Knowledge identifier
+
+    Returns:
+        Ref: 'memx:knowledge:<knowledge_id>'
+    """
+    return make_ref("memx", "knowledge", knowledge_id)
+
+
+def make_memx_artifact_ref(artifact_id: str) -> str:
+    """Create a memx artifact reference.
+
+    Args:
+        artifact_id: Artifact identifier
+
+    Returns:
+        Ref: 'memx:artifact:<artifact_id>'
+    """
+    return make_ref("memx", "artifact", artifact_id)
 
 
 def validate_typed_ref(value: str) -> bool:
     """Validate a typed_ref string.
 
-    Accepts both canonical (4-segment) and legacy (3-segment) formats.
     Returns True if valid, False otherwise.
     """
     try:
@@ -128,18 +193,40 @@ def validate_typed_ref(value: str) -> bool:
 
 
 def canonicalize(value: str) -> str:
-    """Canonicalize a typed_ref string to 4-segment format.
+    """Canonicalize a typed_ref string.
 
     Args:
-        value: A typed_ref string (3 or 4 segments)
+        value: A typed_ref string
 
     Returns:
-        Canonical 4-segment typed_ref string
+        Canonical typed_ref string
     """
     ref = TypedRef.parse(value)
     return str(ref)
 
 
-def is_canonical(value: str) -> bool:
-    """Check if a typed_ref is in canonical (4-segment) format."""
-    return value.count(":") == 3
+def is_memx_ref(value: str) -> bool:
+    """Check if a typed_ref is a memx reference."""
+    try:
+        ref = TypedRef.parse(value)
+        return ref.is_memx
+    except ValueError:
+        return False
+
+
+def is_workx_ref(value: str) -> bool:
+    """Check if a typed_ref is a workx reference."""
+    try:
+        ref = TypedRef.parse(value)
+        return ref.is_workx
+    except ValueError:
+        return False
+
+
+def is_tracker_ref(value: str) -> bool:
+    """Check if a typed_ref is a tracker reference."""
+    try:
+        ref = TypedRef.parse(value)
+        return ref.is_tracker
+    except ValueError:
+        return False
