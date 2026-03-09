@@ -2,8 +2,6 @@
 
 人間向けの概要は [README-human.md](README-human.md) を参照してください。
 
-保守方針: 最低限の保守のみ行います。重大な不具合修正、公開情報の是正、互換性維持を優先し、大きな機能拡張は前提にしません。
-
 ## 同梱 Skill
 
 - Skill 名: `$tracker-bridge-materials`
