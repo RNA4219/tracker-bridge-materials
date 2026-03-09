@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tracker-bridge"
-version = "0.2.0"
+version = "1.0.0"
 description = "External tracker sync bridge for agent-taskstate/memx-core integration"
 readme = "README-human.md"
 license = "Apache-2.0"
@@ -13,7 +13,7 @@ authors = [
     { name = "tracker-bridge team" }
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
@@ -116,5 +116,6 @@ exclude_lines = [
     "raise NotImplementedError",
     "if TYPE_CHECKING:",
 ]
+
 
 
