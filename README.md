@@ -15,11 +15,9 @@
 | 1 | `skills/tracker-bridge-materials/SKILL.md` |
 | 2 | `BLUEPRINT.md` |
 | 3 | `docs/kv-priority-roadmap/` |
-| 4 | `GUARDRAILS.md` |
-| 5 | `RUNBOOK.md` |
-| 6 | `docs/tracker-bridge-requirements.md` |
-| 7 | `docs/tracker-bridge-sqlite-spec.md` |
-| 8 | `README-human.md` |
+
+必要になった時だけ参照:
+`GUARDRAILS.md` / `RUNBOOK.md` / `docs/tracker-bridge-requirements.md` / `docs/tracker-bridge-sqlite-spec.md` / `README-human.md`
 
 ## 実施ルール
 
