@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tracker Bridge"
+  short_description: "tracker-bridge repo workflow guide"
+  default_prompt: "Use $tracker-bridge-materials to work safely in the tracker-bridge-materials repo."
