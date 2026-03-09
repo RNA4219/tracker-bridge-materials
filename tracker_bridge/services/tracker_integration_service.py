@@ -9,11 +9,13 @@ from uuid import uuid4
 from tracker_bridge.adapters.base import TrackerAdapter
 from tracker_bridge.adapters.github import MockGitHubAdapter
 from tracker_bridge.adapters.jira import MockJiraAdapter
+from tracker_bridge.errors import DuplicateError
 from tracker_bridge.models import EntityLink, IssueCache, SyncEvent
-from tracker_bridge.refs import TypedRef, make_tracker_issue_ref, make_agent_taskstate_task_ref
+from tracker_bridge.refs import make_agent_taskstate_task_ref, make_tracker_issue_ref
 from tracker_bridge.repositories.entity_link import EntityLinkRepository
 from tracker_bridge.repositories.issue_cache import IssueCacheRepository
 from tracker_bridge.repositories.sync_event import SyncEventRepository
+from tracker_bridge.services.issue_service import make_fingerprint, make_issue_uniqueness_source
 from tracker_bridge.services.state_transition_service import StateTransitionService
 
 
@@ -22,14 +24,7 @@ def now_iso() -> str:
 
 
 class TrackerIntegrationService:
-    """Service for integrating external trackers with internal systems.
-
-    This service handles:
-    - Issue import and caching
-    - Entity linking between tracker issues and agent-taskstate tasks
-    - Sync event tracking
-    - Status suggestion (not automatic updates)
-    """
+    """Service for integrating external trackers with internal systems."""
 
     def __init__(
         self,
@@ -39,40 +34,16 @@ class TrackerIntegrationService:
         sync_repo: SyncEventRepository,
         transition_service: StateTransitionService | None = None,
     ) -> None:
-        """Initialize the integration service.
-
-        Args:
-            issue_repo: Repository for issue cache
-            link_repo: Repository for entity links
-            sync_repo: Repository for sync events
-            transition_service: Optional service for state transitions
-        """
         self.issue_repo = issue_repo
         self.link_repo = link_repo
         self.sync_repo = sync_repo
         self.transition_service = transition_service
-
-        # Adapter registry
         self._adapters: dict[str, TrackerAdapter] = {}
 
     def register_adapter(self, tracker_type: str, adapter: TrackerAdapter) -> None:
-        """Register an adapter for a tracker type.
-
-        Args:
-            tracker_type: Tracker type identifier (e.g., 'jira', 'github')
-            adapter: Adapter instance
-        """
         self._adapters[tracker_type] = adapter
 
     def get_adapter(self, tracker_type: str) -> TrackerAdapter | None:
-        """Get adapter for a tracker type.
-
-        Args:
-            tracker_type: Tracker type identifier
-
-        Returns:
-            Adapter instance or None
-        """
         return self._adapters.get(tracker_type)
 
     def import_issue(
@@ -84,23 +55,10 @@ class TrackerIntegrationService:
         auth_token: str | None,
         remote_issue_key: str,
     ) -> IssueCache:
-        """Import an issue from an external tracker.
-
-        Args:
-            connection_id: Tracker connection ID
-            tracker_type: Type of tracker (jira, github, etc.)
-            base_url: Tracker base URL
-            auth_token: Authentication token
-            remote_issue_key: Issue key to import
-
-        Returns:
-            Cached issue data
-        """
         adapter = self.get_adapter(tracker_type)
         if not adapter:
             raise ValueError(f"No adapter registered for: {tracker_type}")
 
-        # Fetch and normalize
         raw_issue = adapter.fetch_issue(
             base_url=base_url,
             auth_token=auth_token,
@@ -108,7 +66,6 @@ class TrackerIntegrationService:
         )
         normalized = adapter.normalize_issue(raw_issue)
 
-        # Cache the issue
         ts = now_iso()
         issue = IssueCache(
             id=str(uuid4()),
@@ -129,17 +86,23 @@ class TrackerIntegrationService:
         )
         self.issue_repo.upsert(issue)
 
-        # Record sync event
         remote_ref = make_tracker_issue_ref(tracker_type, normalized.remote_issue_key)
+        fingerprint = make_fingerprint(
+            tracker_connection_id=connection_id,
+            direction="inbound",
+            remote_ref=remote_ref,
+            event_type="issue_imported",
+            uniqueness_source=make_issue_uniqueness_source(normalized),
+        )
         self._record_sync_event(
             connection_id=connection_id,
             direction="inbound",
             remote_ref=remote_ref,
             event_type="issue_imported",
             payload={"issue_key": normalized.remote_issue_key, "title": normalized.title},
+            fingerprint=fingerprint,
         )
 
-        # Record state transition
         if self.transition_service:
             self.transition_service.record_transition(
                 entity_type="issue_cache",
@@ -149,7 +112,11 @@ class TrackerIntegrationService:
                 reason="issue_import",
             )
 
-        return issue
+        resolved_issue = self.issue_repo.find_by_remote_ref(
+            remote_ref,
+            tracker_connection_id=connection_id,
+        )
+        return resolved_issue or issue
 
     def create_link(
         self,
@@ -157,21 +124,15 @@ class TrackerIntegrationService:
         tracker_type: str,
         remote_issue_key: str,
         task_id: str,
+        connection_id: str | None = None,
         link_role: str = "primary",
     ) -> EntityLink:
-        """Create a link between a tracker issue and an agent-taskstate task.
-
-        Args:
-            tracker_type: Type of tracker
-            remote_issue_key: Issue key
-            task_id: agent-taskstate task ID
-            link_role: Link role (primary, related, duplicate, blocks)
-
-        Returns:
-            Created entity link
-        """
         remote_ref = make_tracker_issue_ref(tracker_type, remote_issue_key)
         local_ref = make_agent_taskstate_task_ref(task_id)
+        if connection_id is None:
+            issue = self.issue_repo.find_by_remote_ref(remote_ref)
+            if issue is not None:
+                connection_id = issue.tracker_connection_id
 
         ts = now_iso()
         link = EntityLink(
@@ -181,41 +142,24 @@ class TrackerIntegrationService:
             link_role=link_role,
             created_at=ts,
             updated_at=ts,
+            metadata_json=self._make_link_metadata_json(connection_id),
         )
         self.link_repo.create(link)
-
         return link
 
     def get_linked_issues(self, task_id: str) -> list[tuple[EntityLink, IssueCache | None]]:
-        """Get all issues linked to a task.
-
-        Args:
-            task_id: agent-taskstate task ID
-
-        Returns:
-            List of (link, issue) tuples
-        """
         local_ref = make_agent_taskstate_task_ref(task_id)
-        links = self.link_repo.list_by_local_ref(local_ref)
+        results: list[tuple[EntityLink, IssueCache | None]] = []
 
-        results = []
-        for link in links:
-            # Parse remote_ref to get issue key
+        for link in self.link_repo.list_by_local_ref(local_ref):
             try:
-                typed_ref = TypedRef.parse(link.remote_ref)
-                issue_key = typed_ref.entity_id
-                # Try to find in cache
-                issues = self.issue_repo.list_by_connection(
-                    link.remote_ref.split(":")[2] if ":" in link.remote_ref else ""
+                issue = self.issue_repo.find_by_remote_ref(
+                    link.remote_ref,
+                    tracker_connection_id=self._get_link_connection_id(link),
                 )
+            except ValueError:
                 issue = None
-                for i in issues:
-                    if i.remote_issue_key == issue_key:
-                        issue = i
-                        break
-                results.append((link, issue))
-            except Exception:
-                results.append((link, None))
+            results.append((link, issue))
 
         return results
 
@@ -227,21 +171,8 @@ class TrackerIntegrationService:
         remote_issue_key: str,
         current_task_status: str,
     ) -> dict[str, Any] | None:
-        """Suggest a status update based on task status.
+        _ = connection_id, remote_issue_key
 
-        This does NOT automatically update the tracker.
-        It returns a suggestion for operator review.
-
-        Args:
-            connection_id: Tracker connection ID
-            tracker_type: Type of tracker
-            remote_issue_key: Issue key
-            current_task_status: Current task status
-
-        Returns:
-            Suggestion dict or None
-        """
-        # Mapping of task status to suggested tracker status
         status_map = {
             "done": {"jira": "Done", "github": "closed"},
             "review": {"jira": "In Review", "github": "open"},
@@ -275,35 +206,34 @@ class TrackerIntegrationService:
         comment: str,
         task_id: str | None = None,
     ) -> SyncEvent:
-        """Post a comment to an external tracker.
+        remote_ref = make_tracker_issue_ref(tracker_type, remote_issue_key)
+        local_ref = make_agent_taskstate_task_ref(task_id) if task_id else None
+        uniqueness_source = json.dumps(
+            {"comment": comment, "local_ref": local_ref},
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        fingerprint = make_fingerprint(
+            tracker_connection_id=connection_id,
+            direction="outbound",
+            remote_ref=remote_ref,
+            event_type="comment_posted",
+            uniqueness_source=uniqueness_source,
+        )
+        existing = self.sync_repo.get_by_fingerprint(connection_id, fingerprint)
+        if existing is not None:
+            return existing
 
-        Args:
-            connection_id: Tracker connection ID
-            tracker_type: Type of tracker
-            base_url: Tracker base URL
-            auth_token: Authentication token
-            remote_issue_key: Issue key
-            comment: Comment text
-            task_id: Optional related task ID
-
-        Returns:
-            Sync event record
-        """
         adapter = self.get_adapter(tracker_type)
         if not adapter:
             raise ValueError(f"No adapter registered for: {tracker_type}")
 
-        # Post comment
         adapter.post_comment(
             base_url=base_url,
             auth_token=auth_token,
             remote_issue_key=remote_issue_key,
             comment=comment,
         )
-
-        # Record sync event
-        remote_ref = make_tracker_issue_ref(tracker_type, remote_issue_key)
-        local_ref = make_agent_taskstate_task_ref(task_id) if task_id else None
 
         return self._record_sync_event(
             connection_id=connection_id,
@@ -312,6 +242,7 @@ class TrackerIntegrationService:
             local_ref=local_ref,
             event_type="comment_posted",
             payload={"comment_preview": comment[:100]},
+            fingerprint=fingerprint,
         )
 
     def export_issue_snapshot(
@@ -319,33 +250,39 @@ class TrackerIntegrationService:
         *,
         tracker_type: str,
         remote_issue_key: str,
+        connection_id: str | None = None,
     ) -> dict[str, Any] | None:
-        """Export a minimal issue snapshot for context build.
+        remote_ref = make_tracker_issue_ref(tracker_type, remote_issue_key)
+        try:
+            issue = self.issue_repo.find_by_remote_ref(
+                remote_ref,
+                tracker_connection_id=connection_id,
+            )
+        except ValueError:
+            return None
+        if issue is None:
+            return None
 
-        Args:
-            tracker_type: Type of tracker
-            remote_issue_key: Issue key
-
-        Returns:
-            Snapshot dict or None if not found
-        """
-        # Find cached issue
-        issues = self.issue_repo.list_by_connection("")  # TODO: proper lookup
-
-        for issue in issues:
-            if issue.remote_issue_key == remote_issue_key:
-                return {
-                    "source": "tracker",
-                    "tracker_type": tracker_type,
-                    "issue_key": issue.remote_issue_key,
-                    "title": issue.title,
-                    "status": issue.status,
-                    "assignee": issue.assignee,
-                    "updated_at": issue.updated_at,
-                    "remote_ref": make_tracker_issue_ref(tracker_type, remote_issue_key),
-                }
-
-        return None
+        latest_event = self.sync_repo.get_latest_by_remote_ref(
+            remote_ref,
+            tracker_connection_id=issue.tracker_connection_id,
+        )
+        return {
+            "source": "tracker",
+            "tracker_type": tracker_type,
+            "tracker_connection_id": issue.tracker_connection_id,
+            "issue_key": issue.remote_issue_key,
+            "title": issue.title,
+            "status": issue.status,
+            "assignee": issue.assignee,
+            "updated_at": issue.updated_at,
+            "remote_ref": remote_ref,
+            "last_sync_result": latest_event.status if latest_event else None,
+            "last_sync_direction": latest_event.direction if latest_event else None,
+            "last_synced_at": (
+                (latest_event.processed_at or latest_event.occurred_at) if latest_event else None
+            ),
+        }
 
     def _record_sync_event(
         self,
@@ -356,8 +293,8 @@ class TrackerIntegrationService:
         event_type: str,
         payload: dict[str, Any],
         local_ref: str | None = None,
+        fingerprint: str | None = None,
     ) -> SyncEvent:
-        """Record a sync event."""
         ts = now_iso()
         event = SyncEvent(
             id=str(uuid4()),
@@ -366,7 +303,7 @@ class TrackerIntegrationService:
             remote_ref=remote_ref,
             local_ref=local_ref,
             event_type=event_type,
-            fingerprint=None,
+            fingerprint=fingerprint,
             payload_json=json.dumps(payload, ensure_ascii=False),
             status="applied",
             error_message=None,
@@ -374,22 +311,47 @@ class TrackerIntegrationService:
             processed_at=ts,
             created_at=ts,
         )
-        self.sync_repo.create(event)
-        return event
+        try:
+            self.sync_repo.create(event)
+            return event
+        except DuplicateError:
+            if fingerprint is None:
+                raise
+            existing = self.sync_repo.get_by_fingerprint(connection_id, fingerprint)
+            if existing is None:
+                raise
+            return existing
+
+    @staticmethod
+    def _make_link_metadata_json(tracker_connection_id: str | None) -> str | None:
+        if tracker_connection_id is None:
+            return None
+        return json.dumps(
+            {"tracker_connection_id": tracker_connection_id},
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+    @staticmethod
+    def _get_link_connection_id(link: EntityLink) -> str | None:
+        if not link.metadata_json:
+            return None
+        try:
+            metadata = json.loads(link.metadata_json)
+        except json.JSONDecodeError:
+            return None
+        connection_id = metadata.get("tracker_connection_id")
+        return connection_id if isinstance(connection_id, str) else None
 
 
 class MockTrackerIntegrationService(TrackerIntegrationService):
     """Mock integration service for testing."""
 
     def __init__(self) -> None:
-        """Initialize with mock adapters."""
-        # These will be set up with in-memory DB in tests
         super().__init__(
-            issue_repo=None,  # type: ignore
-            link_repo=None,  # type: ignore
-            sync_repo=None,  # type: ignore
+            issue_repo=None,  # type: ignore[arg-type]
+            link_repo=None,  # type: ignore[arg-type]
+            sync_repo=None,  # type: ignore[arg-type]
         )
-
-        # Register mock adapters
         self.register_adapter("jira", MockJiraAdapter())
         self.register_adapter("github", MockGitHubAdapter())

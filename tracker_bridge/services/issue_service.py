@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+from contextlib import suppress
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from tracker_bridge.errors import DuplicateError
 from tracker_bridge.models import IssueCache, NormalizedIssue, SyncEvent
 from tracker_bridge.refs import make_tracker_issue_ref
 from tracker_bridge.repositories.connection import TrackerConnectionRepository
@@ -34,6 +36,11 @@ def make_fingerprint(
         ]
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def make_issue_uniqueness_source(normalized_issue: NormalizedIssue) -> str:
+    """Build a stable uniqueness source from the normalized raw payload."""
+    return json.dumps(normalized_issue.raw, ensure_ascii=False, sort_keys=True)
 
 
 class IssueService:
@@ -82,7 +89,7 @@ class IssueService:
             direction="inbound",
             remote_ref=remote_ref,
             event_type="issue_updated",
-            uniqueness_source=ts,
+            uniqueness_source=make_issue_uniqueness_source(normalized_issue),
         )
 
         event = SyncEvent(
@@ -100,7 +107,8 @@ class IssueService:
             processed_at=ts,
             created_at=ts,
         )
-        self.sync_repo.create(event)
+        with suppress(DuplicateError):
+            self.sync_repo.create(event)
 
         return self.issue_repo.get_by_remote_key(
             tracker_connection_id, normalized_issue.remote_issue_key

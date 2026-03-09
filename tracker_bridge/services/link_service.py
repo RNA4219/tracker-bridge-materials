@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from tracker_bridge.errors import ValidationError
 from tracker_bridge.models import EntityLink
-from tracker_bridge.refs import validate_typed_ref
+from tracker_bridge.refs import canonicalize, validate_typed_ref
 from tracker_bridge.repositories.entity_link import EntityLinkRepository
 
 
@@ -23,6 +23,7 @@ class LinkService:
         local_ref: str,
         remote_ref: str,
         link_role: str = "primary",
+        metadata_json: str | None = None,
     ) -> EntityLink:
         if not validate_typed_ref(local_ref):
             raise ValidationError(f"invalid local_ref: {local_ref}")
@@ -32,18 +33,18 @@ class LinkService:
         ts = now_iso()
         model = EntityLink(
             id=str(uuid4()),
-            local_ref=local_ref,
-            remote_ref=remote_ref,
+            local_ref=canonicalize(local_ref),
+            remote_ref=canonicalize(remote_ref),
             link_role=link_role,
             created_at=ts,
             updated_at=ts,
-            metadata_json=None,
+            metadata_json=metadata_json,
         )
         self.repo.create(model)
         return model
 
     def list_by_local_ref(self, local_ref: str) -> list[EntityLink]:
-        return list(self.repo.list_by_local_ref(local_ref))
+        return list(self.repo.list_by_local_ref(canonicalize(local_ref)))
 
     def list_by_remote_ref(self, remote_ref: str) -> list[EntityLink]:
-        return list(self.repo.list_by_remote_ref(remote_ref))
+        return list(self.repo.list_by_remote_ref(canonicalize(remote_ref)))

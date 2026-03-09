@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import sqlite3
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
 
 
 @pytest.fixture
-def temp_db_path() -> Path:
+def temp_db_path() -> Generator[Path, None, None]:
     """Create a temporary database file path."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = Path(f.name)
@@ -18,7 +19,7 @@ def temp_db_path() -> Path:
 
 
 @pytest.fixture
-def in_memory_conn() -> sqlite3.Connection:
+def in_memory_conn() -> Generator[sqlite3.Connection, None, None]:
     """Create an in-memory SQLite connection."""
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row

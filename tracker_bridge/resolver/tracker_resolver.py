@@ -15,30 +15,13 @@ from tracker_bridge.resolver.interface import (
 
 
 class TrackerIssueResolver(RefResolver):
-    """Resolver for tracker:issue:* typed_refs.
-
-    Resolves external tracker issue references to their cached content.
-    """
+    """Resolver for tracker:issue:* typed_refs."""
 
     def __init__(self, issue_cache_repo: Any, entity_link_repo: Any) -> None:
-        """Initialize resolver with repositories.
-
-        Args:
-            issue_cache_repo: Repository for issue cache access
-            entity_link_repo: Repository for entity link lookup
-        """
         self.issue_cache_repo = issue_cache_repo
         self.entity_link_repo = entity_link_repo
 
     def can_resolve(self, typed_ref: str) -> bool:
-        """Check if this resolver can handle the given typed_ref.
-
-        Args:
-            typed_ref: The canonical typed_ref string
-
-        Returns:
-            True if this is a tracker:issue:* ref
-        """
         try:
             ref = TypedRef.parse(typed_ref)
             return ref.domain == "tracker" and ref.entity_type == "issue"
@@ -51,15 +34,6 @@ class TrackerIssueResolver(RefResolver):
         *,
         include_raw: bool = False,
     ) -> ResolvedRef:
-        """Resolve a tracker issue typed_ref.
-
-        Args:
-            typed_ref: The canonical typed_ref string
-            include_raw: Whether to include raw issue data
-
-        Returns:
-            ResolvedRef with the issue content
-        """
         if not self.can_resolve(typed_ref):
             return ResolvedRef(
                 typed_ref=typed_ref,
@@ -69,9 +43,7 @@ class TrackerIssueResolver(RefResolver):
 
         try:
             ref = TypedRef.parse(typed_ref)
-            provider = ref.provider  # e.g., 'jira', 'github'
-            issue_key = ref.entity_id  # e.g., 'PROJ-123'
-
+            provider = ref.provider
             if provider is None:
                 return ResolvedRef(
                     typed_ref=typed_ref,
@@ -79,37 +51,19 @@ class TrackerIssueResolver(RefResolver):
                     error_message="Tracker ref must have provider",
                 )
 
-            # Look up issue in cache by remote_issue_key
-            # Note: This requires a connection_id mapping which we'll handle
-            # For now, we search by remote_issue_key across connections
-            issue = self._find_issue_by_key(provider, issue_key)
-
+            issue = self.issue_cache_repo.find_by_remote_ref(str(ref))
             if issue is None:
                 return ResolvedRef(
                     typed_ref=typed_ref,
                     status=ResolveStatus.UNRESOLVED,
-                    error_message=f"Issue not found in cache: {provider}:{issue_key}",
+                    error_message=f"Issue not found in cache: {provider}:{ref.entity_id}",
                 )
-
-            summary = self._build_summary(issue)
-            raw = None
-            if include_raw:
-                raw = json.loads(issue.raw_json) if issue.raw_json else None
-
+        except ValueError as e:
             return ResolvedRef(
                 typed_ref=typed_ref,
-                status=ResolveStatus.RESOLVED,
-                source_kind=SourceKind.TRACKER_ISSUE,
-                summary=summary,
-                raw=raw,
-                metadata={
-                    "provider": provider,
-                    "issue_key": issue_key,
-                    "status": issue.status,
-                    "title": issue.title,
-                },
+                status=ResolveStatus.UNRESOLVED,
+                error_message=str(e),
             )
-
         except Exception as e:
             return ResolvedRef(
                 typed_ref=typed_ref,
@@ -117,26 +71,33 @@ class TrackerIssueResolver(RefResolver):
                 error_message=str(e),
             )
 
+        summary = self._build_summary(issue)
+        raw = json.loads(issue.raw_json) if include_raw and issue.raw_json else None
+        return ResolvedRef(
+            typed_ref=str(ref),
+            status=ResolveStatus.RESOLVED,
+            source_kind=SourceKind.TRACKER_ISSUE,
+            summary=summary,
+            raw=raw,
+            metadata={
+                "provider": provider,
+                "issue_key": ref.entity_id,
+                "status": issue.status,
+                "title": issue.title,
+                "tracker_connection_id": issue.tracker_connection_id,
+            },
+        )
+
     def resolve_many(
         self,
         typed_refs: list[str],
         *,
         include_raw: bool = False,
     ) -> ResolveReport:
-        """Resolve multiple typed_refs.
-
-        Args:
-            typed_refs: List of canonical typed_ref strings
-            include_raw: Whether to include raw content
-
-        Returns:
-            ResolveReport with all resolution results
-        """
         report = ResolveReport()
 
         for typed_ref in typed_refs:
             result = self.resolve(typed_ref, include_raw=include_raw)
-
             if result.status == ResolveStatus.RESOLVED:
                 report.resolved.append(result)
             elif result.status == ResolveStatus.UNRESOLVED:
@@ -146,37 +107,7 @@ class TrackerIssueResolver(RefResolver):
 
         return report
 
-    def _find_issue_by_key(self, provider: str, issue_key: str) -> Any:
-        """Find an issue in cache by provider and key.
-
-        Args:
-            provider: Tracker type (jira, github, etc.)
-            issue_key: Issue key (PROJ-123, owner/repo#45, etc.)
-
-        Returns:
-            IssueCache or None
-        """
-        # This is a simplified implementation
-        # In practice, we'd need to query by tracker_connection_id + remote_issue_key
-        # For now, we iterate through available issues
-        try:
-            issues = self.issue_cache_repo.list_by_provider(provider)
-            for issue in issues:
-                if issue.remote_issue_key == issue_key:
-                    return issue
-        except Exception:
-            pass
-        return None
-
     def _build_summary(self, issue: Any) -> str:
-        """Build a summary string for an issue.
-
-        Args:
-            issue: IssueCache object
-
-        Returns:
-            Human-readable summary
-        """
         parts = []
         if issue.title:
             parts.append(f"**{issue.title}**")
@@ -196,11 +127,6 @@ class MockTrackerIssueResolver(RefResolver):
     """Mock resolver for testing without database."""
 
     def __init__(self, issues: dict[str, dict[str, Any]] | None = None) -> None:
-        """Initialize with mock data.
-
-        Args:
-            issues: Dict mapping typed_ref to issue data
-        """
         self.issues = issues or {}
 
     def can_resolve(self, typed_ref: str) -> bool:
@@ -222,10 +148,11 @@ class MockTrackerIssueResolver(RefResolver):
                 status=ResolveStatus.UNSUPPORTED,
             )
 
-        if typed_ref in self.issues:
-            data = self.issues[typed_ref]
+        canonical_ref = str(TypedRef.parse(typed_ref))
+        if canonical_ref in self.issues:
+            data = self.issues[canonical_ref]
             return ResolvedRef(
-                typed_ref=typed_ref,
+                typed_ref=canonical_ref,
                 status=ResolveStatus.RESOLVED,
                 source_kind=SourceKind.TRACKER_ISSUE,
                 summary=data.get("summary"),
@@ -234,7 +161,7 @@ class MockTrackerIssueResolver(RefResolver):
             )
 
         return ResolvedRef(
-            typed_ref=typed_ref,
+            typed_ref=canonical_ref,
             status=ResolveStatus.UNRESOLVED,
             error_message="Issue not found in mock data",
         )

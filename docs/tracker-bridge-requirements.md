@@ -75,6 +75,7 @@ tracker-bridge は以下の位置づけを持つ。
 - 外部 issue と内部 `agent-taskstate.task` を対応付けできること
 - 1:N および N:N の関係を許容すること
 - link_role を持てること
+- 同一 `tracker_type + remote_issue_key` が複数 connection に存在しうる場合は、connection 単位で識別できるメタデータを保持できること
 
 ### FR-04 同期イベント記録
 - inbound / outbound の同期イベントを履歴として保存できること
@@ -126,9 +127,9 @@ repo 間参照は typed_ref による論理参照とする。
 - evidence / knowledge の正本
 
 ### 参照先
-- `agent-taskstate:task:*`
-- `memx:evidence:*`
-- `tracker:jira:PROJ-123`
+- `agent-taskstate:task:local:*`
+- `memx:evidence:local:*`
+- `tracker:issue:jira:PROJ-123`
 
 ## 9. MVP 範囲
 MVP では以下のみを対象とする。
@@ -165,3 +166,5 @@ MVP では以下は後回しとする。
 - issue 更新から context_bundle 自動生成
 - decision / summary の自動外部投影
 - GitHub PR / commit / release 連携
+
+

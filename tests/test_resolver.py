@@ -13,9 +13,9 @@ from tracker_bridge.resolver import (
 
 class TestResolveStatus:
     def test_status_values(self) -> None:
-        assert ResolveStatus.RESOLVED == "resolved"
-        assert ResolveStatus.UNRESOLVED == "unresolved"
-        assert ResolveStatus.UNSUPPORTED == "unsupported"
+        assert ResolveStatus.RESOLVED.value == "resolved"
+        assert ResolveStatus.UNRESOLVED.value == "unresolved"
+        assert ResolveStatus.UNSUPPORTED.value == "unsupported"
 
 
 class TestResolvedRef:
@@ -48,14 +48,8 @@ class TestResolveReport:
 
     def test_report_with_results(self) -> None:
         report = ResolveReport()
-        report.resolved.append(ResolvedRef(
-            typed_ref="ref1",
-            status=ResolveStatus.RESOLVED,
-        ))
-        report.unresolved.append(ResolvedRef(
-            typed_ref="ref2",
-            status=ResolveStatus.UNRESOLVED,
-        ))
+        report.resolved.append(ResolvedRef(typed_ref="ref1", status=ResolveStatus.RESOLVED))
+        report.unresolved.append(ResolvedRef(typed_ref="ref2", status=ResolveStatus.UNRESOLVED))
 
         assert report.total_count == 2
         assert report.success_rate == 0.5
@@ -88,16 +82,19 @@ class TestMockTrackerIssueResolver:
         assert resolver.can_resolve("agent-taskstate:task:local:123") is False
         assert resolver.can_resolve("invalid") is False
 
-    def test_resolve_existing_issue(self) -> None:
-        resolver = MockTrackerIssueResolver({
-            "tracker:issue:jira:PROJ-123": {
-                "summary": "Test Issue Summary",
-                "metadata": {"status": "Open"},
+    def test_resolve_existing_issue_with_legacy_ref(self) -> None:
+        resolver = MockTrackerIssueResolver(
+            {
+                "tracker:issue:jira:PROJ-123": {
+                    "summary": "Test Issue Summary",
+                    "metadata": {"status": "Open"},
+                }
             }
-        })
+        )
 
-        result = resolver.resolve("tracker:issue:jira:PROJ-123")
+        result = resolver.resolve("tracker:jira:PROJ-123")
         assert result.status == ResolveStatus.RESOLVED
+        assert result.typed_ref == "tracker:issue:jira:PROJ-123"
         assert result.summary == "Test Issue Summary"
 
     def test_resolve_missing_issue(self) -> None:
@@ -113,28 +110,34 @@ class TestMockTrackerIssueResolver:
         assert result.status == ResolveStatus.UNSUPPORTED
 
     def test_resolve_many(self) -> None:
-        resolver = MockTrackerIssueResolver({
-            "tracker:issue:jira:PROJ-123": {"summary": "Issue 1"},
-            "tracker:issue:jira:PROJ-456": {"summary": "Issue 2"},
-        })
+        resolver = MockTrackerIssueResolver(
+            {
+                "tracker:issue:jira:PROJ-123": {"summary": "Issue 1"},
+                "tracker:issue:jira:PROJ-456": {"summary": "Issue 2"},
+            }
+        )
 
-        report = resolver.resolve_many([
-            "tracker:issue:jira:PROJ-123",
-            "tracker:issue:jira:PROJ-456",
-            "tracker:issue:jira:MISSING",
-        ])
+        report = resolver.resolve_many(
+            [
+                "tracker:issue:jira:PROJ-123",
+                "tracker:issue:jira:PROJ-456",
+                "tracker:issue:jira:MISSING",
+            ]
+        )
 
         assert len(report.resolved) == 2
         assert len(report.unresolved) == 1
         assert report.total_count == 3
 
     def test_resolve_with_raw(self) -> None:
-        resolver = MockTrackerIssueResolver({
-            "tracker:issue:jira:PROJ-123": {
-                "summary": "Test",
-                "raw_field": "raw_value",
+        resolver = MockTrackerIssueResolver(
+            {
+                "tracker:issue:jira:PROJ-123": {
+                    "summary": "Test",
+                    "raw_field": "raw_value",
+                }
             }
-        })
+        )
 
         result = resolver.resolve("tracker:issue:jira:PROJ-123", include_raw=True)
         assert result.status == ResolveStatus.RESOLVED

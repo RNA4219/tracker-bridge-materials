@@ -41,12 +41,12 @@ class IssueCache:
 @dataclass
 class EntityLink:
     id: str
-    local_ref: str
-    remote_ref: str
+    local_ref: str  # canonical typed_ref, e.g. agent-taskstate:task:local:*
+    remote_ref: str  # canonical typed_ref, e.g. tracker:issue:jira:*
     link_role: str
     created_at: str
     updated_at: str
-    metadata_json: str | None = None
+    metadata_json: str | None = None  # optional tracker_connection_id for disambiguation
 
 
 @dataclass
@@ -54,8 +54,8 @@ class SyncEvent:
     id: str
     tracker_connection_id: str
     direction: str
-    remote_ref: str
-    local_ref: str | None
+    remote_ref: str  # canonical typed_ref, e.g. tracker:issue:jira:*
+    local_ref: str | None  # canonical typed_ref, e.g. agent-taskstate:task:local:*
     event_type: str
     fingerprint: str | None
     payload_json: str

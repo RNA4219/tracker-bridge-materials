@@ -313,27 +313,120 @@ class TestIssueCacheRepository:
         assert len(open_issues) == 2
 
 
+    def test_find_by_remote_ref_with_connection_id(self, conn: sqlite3.Connection, setup_connection: None) -> None:
+        repo = IssueCacheRepository(conn)
+        ts = now_iso()
+        conn.execute(
+            """
+            INSERT INTO tracker_connection
+            (id, tracker_type, name, base_url, is_enabled, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            ("conn-2", "jira", "Test 2", "https://second.example.com", 1, ts, ts),
+        )
+        repo.upsert(
+            IssueCache(
+                id="issue-1",
+                tracker_connection_id="conn-1",
+                remote_issue_id="10001",
+                remote_issue_key="PROJ-123",
+                title="Primary issue",
+                status="Open",
+                assignee=None,
+                reporter=None,
+                labels_json=None,
+                issue_type=None,
+                priority=None,
+                raw_json='{}',
+                last_seen_at=ts,
+                created_at=ts,
+                updated_at=ts,
+            )
+        )
+        repo.upsert(
+            IssueCache(
+                id="issue-2",
+                tracker_connection_id="conn-2",
+                remote_issue_id="20002",
+                remote_issue_key="PROJ-123",
+                title="Secondary issue",
+                status="Open",
+                assignee=None,
+                reporter=None,
+                labels_json=None,
+                issue_type=None,
+                priority=None,
+                raw_json='{}',
+                last_seen_at=ts,
+                created_at=ts,
+                updated_at=ts,
+            )
+        )
+
+        issue = repo.find_by_remote_ref(
+            "tracker:issue:jira:PROJ-123",
+            tracker_connection_id="conn-2",
+        )
+        assert issue is not None
+        assert issue.title == "Secondary issue"
+
+    def test_find_by_remote_ref_raises_on_ambiguous(self, conn: sqlite3.Connection, setup_connection: None) -> None:
+        repo = IssueCacheRepository(conn)
+        ts = now_iso()
+        conn.execute(
+            """
+            INSERT INTO tracker_connection
+            (id, tracker_type, name, base_url, is_enabled, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            ("conn-2", "jira", "Test 2", "https://second.example.com", 1, ts, ts),
+        )
+        for connection_id, title in (("conn-1", "Primary issue"), ("conn-2", "Secondary issue")):
+            repo.upsert(
+                IssueCache(
+                    id=f"issue-{connection_id}",
+                    tracker_connection_id=connection_id,
+                    remote_issue_id=f"remote-{connection_id}",
+                    remote_issue_key="PROJ-123",
+                    title=title,
+                    status="Open",
+                    assignee=None,
+                    reporter=None,
+                    labels_json=None,
+                    issue_type=None,
+                    priority=None,
+                    raw_json='{}',
+                    last_seen_at=ts,
+                    created_at=ts,
+                    updated_at=ts,
+                )
+            )
+
+        with pytest.raises(ValueError, match="ambiguous tracker ref"):
+            repo.find_by_remote_ref("tracker:issue:jira:PROJ-123")
+
+
 class TestEntityLinkRepository:
     def test_create_and_list(self, conn: sqlite3.Connection) -> None:
         repo = EntityLinkRepository(conn)
         ts = now_iso()
         model = EntityLink(
             id="link-1",
-            local_ref="agent-taskstate:task:abc123",
-            remote_ref="tracker:jira:PROJ-123",
+            local_ref="agent-taskstate:task:local:abc123",
+            remote_ref="tracker:issue:jira:PROJ-123",
             link_role="primary",
             created_at=ts,
             updated_at=ts,
         )
         repo.create(model)
 
-        by_local = repo.list_by_local_ref("agent-taskstate:task:abc123")
+        by_local = repo.list_by_local_ref("agent-taskstate:task:local:abc123")
         assert len(by_local) == 1
-        assert by_local[0].remote_ref == "tracker:jira:PROJ-123"
+        assert by_local[0].remote_ref == "tracker:issue:jira:PROJ-123"
 
-        by_remote = repo.list_by_remote_ref("tracker:jira:PROJ-123")
+        by_remote = repo.list_by_remote_ref("tracker:issue:jira:PROJ-123")
         assert len(by_remote) == 1
-        assert by_remote[0].local_ref == "agent-taskstate:task:abc123"
+        assert by_remote[0].local_ref == "agent-taskstate:task:local:abc123"
 
 
 class TestSyncEventRepository:
@@ -356,7 +449,7 @@ class TestSyncEventRepository:
             id="event-1",
             tracker_connection_id="conn-1",
             direction="inbound",
-            remote_ref="tracker:jira:PROJ-123",
+            remote_ref="tracker:issue:jira:PROJ-123",
             local_ref=None,
             event_type="issue_updated",
             fingerprint="abc123",
@@ -379,8 +472,8 @@ class TestSyncEventRepository:
             id="event-1",
             tracker_connection_id="conn-1",
             direction="outbound",
-            remote_ref="tracker:jira:PROJ-123",
-            local_ref="agent-taskstate:task:abc",
+            remote_ref="tracker:issue:jira:PROJ-123",
+            local_ref="agent-taskstate:task:local:abc",
             event_type="status_changed",
             fingerprint=None,
             payload_json='{}',
@@ -404,8 +497,8 @@ class TestSyncEventRepository:
             id="event-1",
             tracker_connection_id="conn-1",
             direction="outbound",
-            remote_ref="tracker:jira:PROJ-123",
-            local_ref="agent-taskstate:task:abc",
+            remote_ref="tracker:issue:jira:PROJ-123",
+            local_ref="agent-taskstate:task:local:abc",
             event_type="status_changed",
             fingerprint=None,
             payload_json='{}',
@@ -421,3 +514,127 @@ class TestSyncEventRepository:
         events = repo.list(status="failed")
         assert len(events) == 1
         assert events[0].error_message == "Connection timeout"
+
+
+    def test_get_by_fingerprint(self, conn: sqlite3.Connection, setup_connection: None) -> None:
+        repo = SyncEventRepository(conn)
+        ts = now_iso()
+        model = SyncEvent(
+            id="event-1",
+            tracker_connection_id="conn-1",
+            direction="inbound",
+            remote_ref="tracker:issue:jira:PROJ-123",
+            local_ref=None,
+            event_type="issue_updated",
+            fingerprint="fingerprint-1",
+            payload_json='{}',
+            status="applied",
+            error_message=None,
+            occurred_at=ts,
+            processed_at=ts,
+            created_at=ts,
+        )
+        repo.create(model)
+
+        event = repo.get_by_fingerprint("conn-1", "fingerprint-1")
+        assert event is not None
+        assert event.id == "event-1"
+
+    def test_get_latest_by_remote_ref(self, conn: sqlite3.Connection, setup_connection: None) -> None:
+        repo = SyncEventRepository(conn)
+        ts1 = now_iso()
+        first = SyncEvent(
+            id="event-1",
+            tracker_connection_id="conn-1",
+            direction="inbound",
+            remote_ref="tracker:issue:jira:PROJ-123",
+            local_ref=None,
+            event_type="issue_updated",
+            fingerprint="fingerprint-1",
+            payload_json='{}',
+            status="applied",
+            error_message=None,
+            occurred_at=ts1,
+            processed_at=ts1,
+            created_at=ts1,
+        )
+        repo.create(first)
+
+        ts2 = now_iso()
+        second = SyncEvent(
+            id="event-2",
+            tracker_connection_id="conn-1",
+            direction="outbound",
+            remote_ref="tracker:issue:jira:PROJ-123",
+            local_ref="agent-taskstate:task:local:abc",
+            event_type="comment_posted",
+            fingerprint="fingerprint-2",
+            payload_json='{}',
+            status="applied",
+            error_message=None,
+            occurred_at=ts2,
+            processed_at=ts2,
+            created_at=ts2,
+        )
+        repo.create(second)
+
+        event = repo.get_latest_by_remote_ref("tracker:issue:jira:PROJ-123")
+        assert event is not None
+        assert event.id == "event-2"
+
+    def test_get_latest_by_remote_ref_filters_connection(self, conn: sqlite3.Connection, setup_connection: None) -> None:
+        repo = SyncEventRepository(conn)
+        ts = now_iso()
+        conn.execute(
+            """
+            INSERT INTO tracker_connection
+            (id, tracker_type, name, base_url, is_enabled, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            ("conn-2", "jira", "Test 2", "https://second.example.com", 1, ts, ts),
+        )
+        repo.create(
+            SyncEvent(
+                id="event-1",
+                tracker_connection_id="conn-1",
+                direction="inbound",
+                remote_ref="tracker:issue:jira:PROJ-123",
+                local_ref=None,
+                event_type="issue_updated",
+                fingerprint="fingerprint-1",
+                payload_json='{}',
+                status="applied",
+                error_message=None,
+                occurred_at=ts,
+                processed_at=ts,
+                created_at=ts,
+            )
+        )
+        repo.create(
+            SyncEvent(
+                id="event-2",
+                tracker_connection_id="conn-2",
+                direction="outbound",
+                remote_ref="tracker:issue:jira:PROJ-123",
+                local_ref=None,
+                event_type="comment_posted",
+                fingerprint="fingerprint-2",
+                payload_json='{}',
+                status="applied",
+                error_message=None,
+                occurred_at=ts,
+                processed_at=ts,
+                created_at=ts,
+            )
+        )
+
+        event = repo.get_latest_by_remote_ref(
+            "tracker:issue:jira:PROJ-123",
+            tracker_connection_id="conn-1",
+        )
+        assert event is not None
+        assert event.id == "event-1"
+
+
+
+

@@ -53,7 +53,7 @@ next_review_due: 2025-04-08
 ### MVP検証シナリオ
 
 1. **Issue取り込み**: JiraAdapter.normalize_issue → IssueService.import_normalized_issue
-2. **リンク作成**: LinkService.create_link で agent-taskstate:task:* と tracker:jira:* を紐付け
+2. **リンク作成**: LinkService.create_link で agent-taskstate:task:local:* と tracker:issue:jira:* を紐付け
 3. **同期履歴**: sync_event テーブルに inbound/outbound イベントが記録される
 
 ## Verification Checklist

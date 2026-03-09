@@ -78,6 +78,36 @@ class SyncEventRepository:
         rows = self.conn.execute(sql, params).fetchall()
         return [self._from_row(row) for row in rows]
 
+    def get_by_fingerprint(self, tracker_connection_id: str, fingerprint: str) -> SyncEvent | None:
+        row = self.conn.execute(
+            """
+            SELECT * FROM sync_event
+             WHERE tracker_connection_id = ? AND fingerprint = ?
+             ORDER BY occurred_at DESC
+             LIMIT 1
+            """,
+            (tracker_connection_id, fingerprint),
+        ).fetchone()
+        return self._from_row(row) if row else None
+
+    def get_latest_by_remote_ref(
+        self,
+        remote_ref: str,
+        *,
+        tracker_connection_id: str | None = None,
+    ) -> SyncEvent | None:
+        sql = """
+            SELECT * FROM sync_event
+             WHERE remote_ref = ?
+        """
+        params: list[str] = [remote_ref]
+        if tracker_connection_id is not None:
+            sql += " AND tracker_connection_id = ?"
+            params.append(tracker_connection_id)
+        sql += " ORDER BY COALESCE(processed_at, occurred_at) DESC, rowid DESC LIMIT 1"
+        row = self.conn.execute(sql, params).fetchone()
+        return self._from_row(row) if row else None
+
     def mark_applied(self, event_id: str, processed_at: str) -> None:
         cur = self.conn.execute(
             """

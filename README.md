@@ -61,7 +61,7 @@ External tracker connection definition.
 Local cache of external issue state.
 
 ### entity_link
-Mapping between external issues and internal entities (e.g., agent-taskstate:task:*).
+Mapping between external issues and internal entities (e.g., agent-taskstate:task:local:*).
 
 ### sync_event
 Sync event history for auditing.
@@ -71,15 +71,19 @@ Sync event history for auditing.
 References across systems use typed_ref format:
 
 ```
-<domain>:<type>:<id_or_key>
+<domain>:<entity_type>:<provider>:<entity_id>
 ```
 
 Examples:
-- `agent-taskstate:task:01JABCDEF...`
-- `memx:evidence:01JXYZ...`
-- `tracker:jira:PROJ-123`
-- `tracker:github:owner/repo#45`
+- `agent-taskstate:task:local:01JABCDEF...`
+- `memx:evidence:local:01JXYZ...`
+- `tracker:issue:jira:PROJ-123`
+- `tracker:issue:github:owner/repo#45`
 
 ## License
 
 Apache-2.0
+
+
+
+

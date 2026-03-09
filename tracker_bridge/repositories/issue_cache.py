@@ -5,6 +5,7 @@ from collections.abc import Sequence
 
 from tracker_bridge.errors import NotFoundError
 from tracker_bridge.models import IssueCache
+from tracker_bridge.refs import TypedRef
 
 
 class IssueCacheRepository:
@@ -86,6 +87,51 @@ class IssueCacheRepository:
             )
         return self._from_row(row)
 
+    def _list_rows_by_remote_ref(
+        self,
+        remote_ref: str,
+        *,
+        tracker_connection_id: str | None = None,
+    ) -> list[sqlite3.Row]:
+        ref = TypedRef.parse(remote_ref)
+        if not ref.is_tracker or ref.provider is None:
+            raise ValueError(f"remote_ref must be a tracker ref: {remote_ref}")
+
+        sql = """
+            SELECT ic.*
+              FROM issue_cache ic
+              JOIN tracker_connection tc
+                ON tc.id = ic.tracker_connection_id
+             WHERE tc.tracker_type = ? AND ic.remote_issue_key = ?
+        """
+        params: list[str] = [ref.provider, ref.entity_id]
+        if tracker_connection_id is not None:
+            sql += " AND ic.tracker_connection_id = ?"
+            params.append(tracker_connection_id)
+        sql += " ORDER BY ic.updated_at DESC"
+        rows = self.conn.execute(sql, params).fetchall()
+        return list(rows)
+
+    def find_by_remote_ref(
+        self,
+        remote_ref: str,
+        *,
+        tracker_connection_id: str | None = None,
+    ) -> IssueCache | None:
+        rows = self._list_rows_by_remote_ref(
+            remote_ref,
+            tracker_connection_id=tracker_connection_id,
+        )
+        if not rows:
+            return None
+        if tracker_connection_id is None and len(rows) > 1:
+            raise ValueError(f"ambiguous tracker ref across connections: {remote_ref}")
+        return self._from_row(rows[0])
+
+    def list_by_remote_ref(self, remote_ref: str) -> Sequence[IssueCache]:
+        rows = self._list_rows_by_remote_ref(remote_ref)
+        return [self._from_row(row) for row in rows]
+
     def list_by_connection(
         self,
         tracker_connection_id: str,
@@ -110,4 +156,18 @@ class IssueCacheRepository:
                 """,
                 (tracker_connection_id,),
             ).fetchall()
+        return [self._from_row(row) for row in rows]
+
+    def list_by_tracker_type(self, tracker_type: str) -> Sequence[IssueCache]:
+        rows = self.conn.execute(
+            """
+            SELECT ic.*
+              FROM issue_cache ic
+              JOIN tracker_connection tc
+                ON tc.id = ic.tracker_connection_id
+             WHERE tc.tracker_type = ?
+             ORDER BY ic.updated_at DESC
+            """,
+            (tracker_type,),
+        ).fetchall()
         return [self._from_row(row) for row in rows]

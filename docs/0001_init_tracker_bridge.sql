@@ -71,16 +71,16 @@ CREATE INDEX IF NOT EXISTS idx_issue_cache_last_seen_at
 
 -- ------------------------------------------------------------
 -- entity_link
--- 外部 issue と内部 entity(agent-taskstate:task:*, memx:artifact:* など) の対応
+-- 外部 issue と内部 entity(agent-taskstate:task:local:*, memx:artifact:* など) の対応
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS entity_link (
   id TEXT PRIMARY KEY,
-  local_ref TEXT NOT NULL,            -- agent-taskstate:task:... / memx:artifact:...
-  remote_ref TEXT NOT NULL,           -- tracker:jira:PROJ-123 / tracker:github:repo#45
+  local_ref TEXT NOT NULL,            -- agent-taskstate:task:local:... / memx:artifact:local:...
+  remote_ref TEXT NOT NULL,           -- tracker:issue:jira:PROJ-123 / tracker:issue:github:repo#45
   link_role TEXT NOT NULL,            -- primary / related / duplicate / blocks / caused_by
   created_at TEXT NOT NULL,           -- ISO 8601 UTC
   updated_at TEXT NOT NULL,           -- ISO 8601 UTC
-  metadata_json TEXT,
+  metadata_json TEXT,                 -- optional {"tracker_connection_id":"conn-1"}
 
   CHECK (link_role IN ('primary', 'related', 'duplicate', 'blocks', 'caused_by'))
 );
@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS sync_event (
   tracker_connection_id TEXT NOT NULL,
   direction TEXT NOT NULL,            -- inbound / outbound
   remote_ref TEXT NOT NULL,
-  local_ref TEXT,                     -- agent-taskstate:task:* など
+  local_ref TEXT,                     -- agent-taskstate:task:local:* など
   event_type TEXT NOT NULL,           -- issue_created / issue_updated / comment_created / status_changed / link_created
   fingerprint TEXT,                   -- 冪等制御用
   payload_json TEXT NOT NULL,
@@ -163,11 +163,20 @@ SELECT
 FROM issue_cache ic
 LEFT JOIN entity_link el
   ON el.remote_ref = (
-    'tracker:' ||
+    'tracker:issue:' ||
     (SELECT tc.tracker_type
        FROM tracker_connection tc
       WHERE tc.id = ic.tracker_connection_id) ||
     ':' || ic.remote_issue_key
-  );
+  )
+ AND COALESCE(
+   json_extract(el.metadata_json, '$.tracker_connection_id'),
+   ic.tracker_connection_id
+ ) = ic.tracker_connection_id;
 
 COMMIT;
+
+
+
+
+

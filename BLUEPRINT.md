@@ -88,7 +88,7 @@ flowchart LR
 ### CLI (予定):
 - `tracker-bridge connection create --type jira --name "My Jira" --base-url https://...`
 - `tracker-bridge issue import --connection <id> --key PROJ-123`
-- `tracker-bridge link create --local agent-taskstate:task:abc --remote tracker:jira:PROJ-123`
+- `tracker-bridge link create --local agent-taskstate:task:local:abc --remote tracker:issue:jira:PROJ-123`
 - `tracker-bridge sync status [--pending|--failed]`
 
 ### Python API:

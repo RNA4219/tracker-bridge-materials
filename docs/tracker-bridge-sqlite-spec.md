@@ -25,9 +25,9 @@ SQLite では以下を保持する。
 - 外部参照は typed_ref 文字列で持つ
 
 例:
-- `agent-taskstate:task:01HXXXX`
-- `memx:evidence:01HYYYY`
-- `tracker:jira:PROJ-123`
+- `agent-taskstate:task:local:01HXXXX`
+- `memx:evidence:local:01HYYYY`
+- `tracker:issue:jira:PROJ-123`
 
 ### 2.3 秘密情報
 - API token / secret は DB に保存しない
@@ -111,12 +111,12 @@ CREATE INDEX idx_issue_cache_updated
 
 CREATE TABLE entity_link (
   id TEXT PRIMARY KEY,
-  local_ref TEXT NOT NULL,            -- agent-taskstate:task:... / memx:artifact:...
-  remote_ref TEXT NOT NULL,           -- tracker:jira:PROJ-123
+  local_ref TEXT NOT NULL,            -- agent-taskstate:task:local:... / memx:artifact:local:...
+  remote_ref TEXT NOT NULL,           -- tracker:issue:jira:PROJ-123
   link_role TEXT NOT NULL,            -- primary / related / duplicate / blocks / caused_by
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  metadata_json TEXT,
+  metadata_json TEXT,                 -- optional {"tracker_connection_id":"conn-1"}
 
   CHECK (link_role IN ('primary', 'related', 'duplicate', 'blocks', 'caused_by'))
 );
@@ -135,7 +135,7 @@ CREATE TABLE sync_event (
   tracker_connection_id TEXT NOT NULL,
   direction TEXT NOT NULL,            -- inbound / outbound
   remote_ref TEXT NOT NULL,
-  local_ref TEXT,                     -- agent-taskstate:task:* など
+  local_ref TEXT,                     -- agent-taskstate:task:local:* など
   event_type TEXT NOT NULL,           -- issue_created / issue_updated / comment_created / status_changed / link_created
   fingerprint TEXT,                   -- 冪等性制御用
   payload_json TEXT NOT NULL,
@@ -211,14 +211,15 @@ CREATE INDEX idx_sync_event_occurred
 外部 issue と内部 entity の対応関係を保持する。
 
 #### カラム
-- `local_ref`: `agent-taskstate:task:*` を主用途とする
-- `remote_ref`: `tracker:jira:PROJ-123` など
+- `local_ref`: `agent-taskstate:task:local:*` を主用途とする
+- `remote_ref`: `tracker:issue:jira:PROJ-123` など
 - `link_role`: 関係種別
 
 #### 備考
 - 1 issue : N task を許容
 - 1 task : N issue も許容
 - DB外参照なので FK は張らない
+- 同じ `remote_ref` が複数 connection に存在しうる場合は `metadata_json.tracker_connection_id` で解決対象を固定する
 
 ### 6.4 `sync_event`
 #### 役割
@@ -245,15 +246,15 @@ tracker-bridge では DB をまたぐ参照を typed_ref で統一する。
 
 ### 7.1 形式
 ```text
-<domain>:<type>:<id_or_key>
+<domain>:<entity_type>:<provider>:<entity_id>
 ```
 
 ### 7.2 例
 ```text
-agent-taskstate:task:01JABCDEF...
-memx:evidence:01JXYZ...
-tracker:jira:PROJ-123
-tracker:github:repo#45
+agent-taskstate:task:local:01JABCDEF...
+memx:evidence:local:01JXYZ...
+tracker:issue:jira:PROJ-123
+tracker:issue:github:owner/repo#45
 ```
 
 ### 7.3 用途
@@ -397,3 +398,11 @@ MVP では以下を割り切る。
 という境界が維持される。
 
 これにより、Jira/BTS が内部思考の正本になることを防ぐ。
+
+
+
+
+
+
+
+

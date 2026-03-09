@@ -75,15 +75,17 @@ class TestEntityLink:
     def test_create(self) -> None:
         model = EntityLink(
             id="link-1",
-            local_ref="agent-taskstate:task:abc123",
-            remote_ref="tracker:jira:PROJ-123",
+            local_ref="agent-taskstate:task:local:abc123",
+            remote_ref="tracker:issue:jira:PROJ-123",
             link_role="primary",
             created_at="2025-01-01T00:00:00Z",
             updated_at="2025-01-01T00:00:00Z",
+            metadata_json='{"tracker_connection_id": "conn-1"}',
         )
-        assert model.local_ref == "agent-taskstate:task:abc123"
-        assert model.remote_ref == "tracker:jira:PROJ-123"
+        assert model.local_ref == "agent-taskstate:task:local:abc123"
+        assert model.remote_ref == "tracker:issue:jira:PROJ-123"
         assert model.link_role == "primary"
+        assert model.metadata_json == '{"tracker_connection_id": "conn-1"}'
 
 
 class TestSyncEvent:
@@ -92,7 +94,7 @@ class TestSyncEvent:
             id="event-1",
             tracker_connection_id="conn-1",
             direction="inbound",
-            remote_ref="tracker:jira:PROJ-123",
+            remote_ref="tracker:issue:jira:PROJ-123",
             local_ref=None,
             event_type="issue_updated",
             fingerprint="abc123",
@@ -111,8 +113,8 @@ class TestSyncEvent:
             id="event-2",
             tracker_connection_id="conn-1",
             direction="outbound",
-            remote_ref="tracker:jira:PROJ-456",
-            local_ref="agent-taskstate:task:def456",
+            remote_ref="tracker:issue:jira:PROJ-456",
+            local_ref="agent-taskstate:task:local:def456",
             event_type="status_changed",
             fingerprint=None,
             payload_json='{"status": "Done"}',
