@@ -180,4 +180,5 @@ Codex などの Agent は [skills/tracker-bridge-materials/SKILL.md](skills/trac
 
 ## ライセンス
 
-Apache-2.0
+MIT
+
