@@ -233,6 +233,32 @@ class GitHubAdapter:
 
         return response.json()  # type: ignore[no-any-return]
 
+    def create_issue(
+        self,
+        *,
+        base_url: str,
+        auth_token: str | None,
+        project_key: str,
+        title: str,
+        body: str,
+        labels: list[str],
+    ) -> dict[str, Any]:
+        """Create a GitHub issue in ``owner/repo``."""
+        if not self.http_client or not auth_token:
+            raise NotImplementedError("HTTP client and auth_token required for live operations.")
+        if "/" not in project_key or project_key.startswith("/") or project_key.endswith("/"):
+            raise ValueError(f"GitHub project_key must be 'owner/repo', got: {project_key}")
+
+        api_base = base_url.rstrip("/") or "https://api.github.com"
+        url = f"{api_base}/repos/{project_key}/issues"
+        response = self.http_client.post(
+            url,
+            headers=self._get_headers(auth_token),
+            json={"title": title, "body": body, "labels": labels},
+        )
+        response.raise_for_status()
+        return response.json()  # type: ignore[no-any-return]
+
 
 class MockGitHubAdapter:
     """Mock GitHub adapter for testing."""
@@ -242,6 +268,7 @@ class MockGitHubAdapter:
         self.issues = issues or {}
         self.comments: dict[str, list[str]] = {}
         self.status_updates: dict[str, list[str]] = {}
+        self.created_issues: list[dict[str, Any]] = []
 
     def fetch_issue(
         self,
@@ -297,6 +324,31 @@ class MockGitHubAdapter:
             self.status_updates[remote_issue_key] = []
         self.status_updates[remote_issue_key].append(status)
         return {"state": status}
+
+    def create_issue(
+        self,
+        *,
+        base_url: str,
+        auth_token: str | None,
+        project_key: str,
+        title: str,
+        body: str,
+        labels: list[str],
+    ) -> dict[str, Any]:
+        """Create and retain a deterministic mock GitHub issue."""
+        issue_number = len(self.created_issues) + 1
+        issue = {
+            "id": issue_number,
+            "number": issue_number,
+            "title": title,
+            "body": body,
+            "labels": [{"name": label} for label in labels],
+            "state": "open",
+            "html_url": f"https://github.com/{project_key}/issues/{issue_number}",
+        }
+        self.created_issues.append(issue)
+        self.issues[f"{project_key}#{issue_number}"] = issue
+        return issue
 
     def add_issue(self, key: str, data: dict[str, Any]) -> None:
         """Add a mock issue."""

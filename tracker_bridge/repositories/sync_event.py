@@ -148,3 +148,31 @@ class SyncEventRepository:
         )
         if cur.rowcount == 0:
             raise NotFoundError(f"sync_event not found: {event_id}")
+
+    def update_result(
+        self,
+        event_id: str,
+        *,
+        status: str,
+        processed_at: str | None,
+        remote_ref: str | None = None,
+        payload_json: str | None = None,
+        error_message: str | None = None,
+    ) -> None:
+        """Finalize or reset a reserved outbound sync event."""
+        if status not in {"pending", "applied", "failed", "skipped"}:
+            raise ValueError(f"invalid sync_event status: {status}")
+        cur = self.conn.execute(
+            """
+            UPDATE sync_event
+               SET status = ?,
+                   processed_at = ?,
+                   remote_ref = COALESCE(?, remote_ref),
+                   payload_json = COALESCE(?, payload_json),
+                   error_message = ?
+             WHERE id = ?
+            """,
+            (status, processed_at, remote_ref, payload_json, error_message, event_id),
+        )
+        if cur.rowcount == 0:
+            raise NotFoundError(f"sync_event not found: {event_id}")

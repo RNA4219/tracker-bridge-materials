@@ -8,13 +8,13 @@ tracker-bridge は、Jira / GitHub Issues / Linear / Backlog などの外部ト�
 
 ## 保守方針
 
-このリポジトリは `v1.0.0` を正式リリースとし、以後の保守は最低限に留めます。
+このリポジトリは v1.1.0 で、検証済み handoff から GitHub Issue を安全に作成する outbound 経路を提供します。
 
 - 重大な不具合修正
 - 公開情報やドキュメントの是正
 - 既存利用者への互換性維持
 
-新機能追加や大規模な設計変更は、原則としてこの repo では積極的に進めません。
+外部同期履歴の正本という責務境界を維持し、GitHub outbound の安全性・互換性・監査性を保守します。
 
 ## このリポジトリがやること
 
@@ -22,6 +22,7 @@ tracker-bridge は、Jira / GitHub Issues / Linear / Backlog などの外部ト�
 - 外部 issue を `issue_cache` としてローカルに投影する
 - 外部 issue と内部 task / artifact を `typed_ref` で疎結合に関連付ける
 - inbound / outbound の同期イベントを `sync_event` に残し、監査可能にする
+- 検証済み handoff item から GitHub Issue を冪等に作成する
 - Agent が扱える最小限の bridge 実装と資料を OSS として提供する
 
 ## やらないこと
@@ -181,4 +182,3 @@ Codex などの Agent は [skills/tracker-bridge-materials/SKILL.md](skills/trac
 ## ライセンス
 
 MIT
-
