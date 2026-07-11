@@ -94,6 +94,19 @@ issue = svc.import_normalized_issue(
 print(issue)
 ```
 
+## GitHub outbound issue
+
+1. tracker_connection に tracker_type=github、base_url、project_key、
+   secret_ref を登録する。
+2. secret_ref と同名の環境変数へGitHub tokenを設定する。
+3. TrackerIntegrationService.create_outbound_issueへconnection ID、task ID、
+   handoff ID、handoff item ID、title、body、labelsを渡す。
+4. applied後にissue_cache、entity_link、sync_eventを確認する。
+5. failedかつoutcome_unknownの場合は再作成せず、GitHub本文の非表示markerを
+   照合してから再実行する。
+
+token値をSQL、ログ、artifact、例外本文へコピーしてはならない。同じfingerprint
+の同時実行ではreservation ownerだけが外部createを行う。
 ## Observability
 
 ### ログ確認

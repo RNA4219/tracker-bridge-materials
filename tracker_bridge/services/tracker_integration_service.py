@@ -12,10 +12,12 @@ from tracker_bridge.adapters.jira import MockJiraAdapter
 from tracker_bridge.errors import DuplicateError
 from tracker_bridge.models import EntityLink, IssueCache, SyncEvent
 from tracker_bridge.refs import make_agent_taskstate_task_ref, make_tracker_issue_ref
+from tracker_bridge.repositories.connection import TrackerConnectionRepository
 from tracker_bridge.repositories.entity_link import EntityLinkRepository
 from tracker_bridge.repositories.issue_cache import IssueCacheRepository
 from tracker_bridge.repositories.sync_event import SyncEventRepository
 from tracker_bridge.services.issue_service import make_fingerprint, make_issue_uniqueness_source
+from tracker_bridge.services.outbound_issue import OutboundIssueCreator
 from tracker_bridge.services.state_transition_service import StateTransitionService
 
 
@@ -32,11 +34,13 @@ class TrackerIntegrationService:
         issue_repo: IssueCacheRepository,
         link_repo: EntityLinkRepository,
         sync_repo: SyncEventRepository,
+        connection_repo: TrackerConnectionRepository | None = None,
         transition_service: StateTransitionService | None = None,
     ) -> None:
         self.issue_repo = issue_repo
         self.link_repo = link_repo
         self.sync_repo = sync_repo
+        self.connection_repo = connection_repo
         self.transition_service = transition_service
         self._adapters: dict[str, TrackerAdapter] = {}
 
@@ -243,6 +247,37 @@ class TrackerIntegrationService:
             event_type="comment_posted",
             payload={"comment_preview": comment[:100]},
             fingerprint=fingerprint,
+        )
+
+    def create_outbound_issue(
+        self,
+        *,
+        connection_id: str,
+        task_id: str,
+        handoff_id: str,
+        handoff_item_id: str,
+        title: str,
+        body: str,
+        labels: list[str],
+    ) -> SyncEvent:
+        """Create a GitHub issue with durable idempotency and audit records."""
+        if self.connection_repo is None:
+            raise ValueError("connection_repo is required for outbound issue creation")
+        creator = OutboundIssueCreator(
+            connection_repo=self.connection_repo,
+            issue_repo=self.issue_repo,
+            link_repo=self.link_repo,
+            sync_repo=self.sync_repo,
+            adapters=self._adapters,
+        )
+        return creator.create(
+            connection_id=connection_id,
+            task_id=task_id,
+            handoff_id=handoff_id,
+            handoff_item_id=handoff_item_id,
+            title=title,
+            body=body,
+            labels=labels,
         )
 
     def export_issue_snapshot(

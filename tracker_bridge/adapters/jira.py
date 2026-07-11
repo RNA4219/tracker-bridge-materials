@@ -247,6 +247,19 @@ class JiraAdapter:
 
         return {"status": "ok", "transition_id": transition_id}
 
+    def create_issue(
+        self,
+        *,
+        base_url: str,
+        auth_token: str | None,
+        project_key: str,
+        title: str,
+        body: str,
+        labels: list[str],
+    ) -> dict[str, Any]:
+        """Reject issue creation until Jira support is explicitly implemented."""
+        raise NotImplementedError("Jira issue creation is not supported")
+
 
 class MockJiraAdapter:
     """Mock Jira adapter for testing."""
@@ -315,6 +328,19 @@ class MockJiraAdapter:
             self.status_updates[remote_issue_key] = []
         self.status_updates[remote_issue_key].append(status)
         return {"status": "ok"}
+
+    def create_issue(
+        self,
+        *,
+        base_url: str,
+        auth_token: str | None,
+        project_key: str,
+        title: str,
+        body: str,
+        labels: list[str],
+    ) -> dict[str, Any]:
+        """Reject issue creation to mirror the live Jira adapter."""
+        raise NotImplementedError("Jira issue creation is not supported")
 
     def add_issue(self, key: str, data: dict[str, Any]) -> None:
         """Add a mock issue."""

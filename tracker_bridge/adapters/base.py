@@ -105,3 +105,16 @@ class TrackerAdapter(Protocol):
             Response data from the API
         """
         ...
+
+    def create_issue(
+        self,
+        *,
+        base_url: str,
+        auth_token: str | None,
+        project_key: str,
+        title: str,
+        body: str,
+        labels: list[str],
+    ) -> dict[str, Any]:
+        """Create an issue in the configured tracker project."""
+        ...

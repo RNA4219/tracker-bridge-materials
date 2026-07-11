@@ -28,6 +28,17 @@
 | 疎結合 | `agent-taskstate` / `memx-core` とは typed_ref による論理参照のみ |
 | 秘密情報 | 認証情報を DB に保存しない |
 
+## GitHub outbound
+
+TrackerIntegrationService.create_outbound_issue は connection ID、task ID、
+handoff ID、handoff item ID、title、body、labels を受け取ります。
+
+- local ref は agent-taskstate:task:local:<task_id>
+- remote ref は tracker:issue:github:<owner/repo#number>
+- fingerprint と非表示 marker で再送・同時送信を抑止
+- token は tracker_connection.secret_ref が示す環境変数だけから取得
+- applied 時は issue cache、entity link、sync event を同一 transaction で確定
+- outcome unknown は自動再作成せず照合・review対象
 ## 検証
 
 ```bash

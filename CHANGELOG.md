@@ -34,3 +34,23 @@
 - initial tracker-bridge materials bundle
 - base SQLite schema, repositories, services, resolvers, and tests
 - roadmap, requirements, evaluation, and runbook documentation
+
+## [1.1.0] - 2026-07-11
+
+### Added
+
+- audited GitHub Issue creation through TrackerIntegrationService
+- durable handoff fingerprint and hidden idempotency marker reconciliation
+- concurrent reservation ownership and outcome-unknown handling
+- v1.1.0 CI and release documentation
+
+### Security
+
+- credentials are resolved only through tracker_connection.secret_ref
+- tokens are excluded from DB payloads and sanitized errors
+
+### Validation
+
+- ruff check .
+- mypy tracker_bridge tests
+- pytest --cov --cov-fail-under=80
